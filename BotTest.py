@@ -91,13 +91,72 @@ def callback_inline(message):
 def callback_inline(message):
     chat_id = message.message.chat.id
     message_id = message.message.id
-    kb_inc_exp = Keyboa(items=[
-        {'Доходы': 'INC'},
-        {'Расходы': 'EXP'},
-    ], front_marker="&type=", back_marker="$", items_in_row=2).keyboard
-    print('Доходы!')
-    print(message.data)
-    # print(re.search(r''), message.data)
+    data = message.data.split('=')[-1][:-1]
+    if data == 'INC':
+        act = 'доход'
+    else:
+        act = 'расход'
+    kb_show = Keyboa(items=[
+        {
+            f'Показать {act}ы': f'show{data}'
+        },
+    ]).keyboard
+    kb_act = Keyboa(items=[
+        {f'Добавить {act}': 'add'},
+        {f'Удалить {act}': 'del'},
+    ], front_marker="&act=", back_marker=message.data, items_in_row=2).keyboard
+    kb_menu = Keyboa(items={
+        'Вернуться в основное меню': 'main_menu'
+    }).keyboard
+    kb_second = Keyboa.combine(keyboards=(kb_show, kb_act, kb_menu))
+    bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
+                          text='Выберите следующее действие')
+
+
+@bot.callback_query_handler(func=lambda call: re.match(r'^&act=add', call.data))
+def callback_inline(message):
+    chat_id = message.message.chat.id
+    message_id = message.message.id
+    data = message.data.split('=')[-1][:-1]
+    categories = get_categories(data)
+    items = []
+    for element in categories:
+        items.append({element['name']: element['id']})
+    kb_cat = Keyboa(items=items, front_marker="&id=", back_marker=message.data, items_in_row=3).keyboard
+    kb_add = Keyboa(items=[{'Добавить категорию': 'addcat'}], front_marker="&addcat=", back_marker=message.data,
+                    items_in_row=3).keyboard
+    kb_previous = Keyboa(items={
+        'Вернуться на шаг назад': '&' + message.data.split('&')[-1]
+    }).keyboard
+    kb_menu = Keyboa(items={
+        'Вернуться в основное меню': 'main_menu'
+    }).keyboard
+    kb_second = Keyboa.combine(keyboards=(kb_cat, kb_add, kb_previous, kb_menu))
+    bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
+                          text='Выберите категорию')
+
+
+@bot.callback_query_handler(func=lambda call: re.match(r'^&act=del', call.data))
+def callback_inline(message):
+    chat_id = message.message.chat.id
+    message_id = message.message.id
+    data = message.data.split('=')[-1][:-1]
+    categories = get_operations(chat_id, data)
+    items = []
+    for element in categories:
+        items.append({element['title']: element['id']})
+    kb_cat = Keyboa(items=items, front_marker="&id=", back_marker=message.data, items_in_row=2).keyboard
+    kb_add = Keyboa(items=[{'Добавить категорию': 'addcat'}], front_marker="&addcat=", back_marker=message.data,
+                    items_in_row=3).keyboard
+    kb_previous = Keyboa(items={
+        'Вернуться на шаг назад': '&' + message.data.split('&')[-1]
+    }).keyboard
+    kb_menu = Keyboa(items={
+        'Вернуться в основное меню': 'main_menu'
+    }).keyboard
+    kb_second = Keyboa.combine(keyboards=(kb_cat, kb_add, kb_previous, kb_menu))
+    bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
+                          text='Что хотите удалить?')
 
 
 @bot.message_handler(func=lambda message: True)

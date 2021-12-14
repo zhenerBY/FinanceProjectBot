@@ -39,7 +39,8 @@ def add_api_users(chat_id, first_name: str = None) -> dict:
 
 
 # С аргументом - только операции пользователя, без - все
-def get_operations(chat_id: int = None) -> list:
+# Set the value 'INC'|'EXP' for separated list
+def get_operations(chat_id: int = None, cat_type: str = None) -> list:
     headers = {
         'Authorization': 'Api-Key ' + APIKEY,
     }
@@ -49,8 +50,38 @@ def get_operations(chat_id: int = None) -> list:
         }
     else:
         data = {}
-    users_data = requests.get(HOST_API + 'operations/', json=data, headers=headers)
+    if cat_type is not None:
+        users_data = requests.get(HOST_API + 'ext_operations/', json=data, headers=headers)
+        json_users_data = users_data.json()
+        tmp = []
+        for item in json_users_data:
+            if item['category']['cat_type'] == cat_type:
+                item['user'] = item['user']['id']
+                item['category'] = item['category']['id']
+                tmp.append(item)
+        json_users_data = tmp
+    else:
+        users_data = requests.get(HOST_API + 'operations/', json=data, headers=headers)
+        json_users_data = users_data.json()
+
+    return json_users_data
+
+
+# get list of dict {name:id}
+def get_list_of_name_operations(chat_id: int, cat_type: str) -> list:
+    headers = {
+        'Authorization': 'Api-Key ' + APIKEY,
+    }
+    data = {
+        'chat_id': chat_id,
+    }
+    users_data = requests.get(HOST_API + 'ext_operations/', json=data, headers=headers)
     json_users_data = users_data.json()
+    tmp = []
+    for item in json_users_data:
+        if item['category'][cat_type] == cat_type:
+            tmp.append({item['name']: item})
+    json_users_data = tmp
     return json_users_data
 
 
@@ -108,12 +139,21 @@ def del_operations(id: int) -> dict:
     return json_responce
 
 
-def get_categories() -> list:
+# Set the value 'INC'|'EXP' for separated list
+def get_categories(cat_type: str = None) -> list:
     headers = {
         'Authorization': 'Api-Key ' + APIKEY,
     }
     users_data = requests.get(HOST_API + 'categories/', headers=headers)
     json_users_data = users_data.json()
+    if cat_type is None:
+        json_users_data = json_users_data
+    else:
+        tmp = []
+        for item in json_users_data:
+            if item['cat_type'] == cat_type:
+                tmp.append(item)
+        json_users_data = tmp
     return json_users_data
 
 
