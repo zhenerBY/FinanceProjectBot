@@ -4,6 +4,7 @@ import json
 HOST_API = 'http://127.0.0.1:8000/api/'
 chat_id = 134203883
 TOKEN = '994f61ba4bd900112ae616ef66c09fe086576b2e'
+APIKEY = 'J8W5JPDw.6zXqClii0tX5pH7e0byYo9bQHjUHuVoz'
 
 
 # Примеры работы для бота (без авторизации)
@@ -11,7 +12,7 @@ TOKEN = '994f61ba4bd900112ae616ef66c09fe086576b2e'
 # С аргументов выводит только текущего пользователя, без - всех
 def get_api_users_list(chat_id: int = None) -> list:
     headers = {
-        'Authorization': 'Token ' + TOKEN,
+        'Authorization': 'Api-Key ' + APIKEY,
     }
     if chat_id is not None:
         data = {
@@ -26,7 +27,7 @@ def get_api_users_list(chat_id: int = None) -> list:
 
 def add_api_users(chat_id, first_name: str = None) -> dict:
     headers = {
-        'Authorization': 'Token ' + TOKEN,
+        'Authorization': 'Api-Key ' + APIKEY,
     }
     data = {
         'chat_id': chat_id,
@@ -40,7 +41,7 @@ def add_api_users(chat_id, first_name: str = None) -> dict:
 # С аргументом - только операции пользователя, без - все
 def get_operations(chat_id: int = None) -> list:
     headers = {
-        'Authorization': 'Token ' + TOKEN,
+        'Authorization': 'Api-Key ' + APIKEY,
     }
     if chat_id is not None:
         data = {
@@ -57,7 +58,7 @@ def get_operations(chat_id: int = None) -> list:
 def add_operations(title: str, description: str, amount: float, category: int, user: int = 1,
                    chat_id: int = None) -> dict:
     headers = {
-        'Authorization': 'Token ' + TOKEN,
+        'Authorization': 'Api-Key ' + APIKEY,
     }
     if chat_id is not None:
         data = {
@@ -83,7 +84,7 @@ def add_operations(title: str, description: str, amount: float, category: int, u
 # use kwargs name from OperationModel
 def partial_update_operations(id: int, **kwargs) -> dict:
     headers = {
-        'Authorization': 'Token ' + TOKEN,
+        'Authorization': 'Api-Key ' + APIKEY,
     }
     data = {}
     for element in kwargs:
@@ -96,7 +97,7 @@ def partial_update_operations(id: int, **kwargs) -> dict:
 # fake operation deletion
 def del_operations(id: int) -> dict:
     headers = {
-        'Authorization': 'Token ' + TOKEN,
+        'Authorization': 'Api-Key ' + APIKEY,
     }
     data = {
         'id': id,
@@ -107,10 +108,9 @@ def del_operations(id: int) -> dict:
     return json_responce
 
 
-# С аргументом - только операции пользователя, без - все
 def get_categories() -> list:
     headers = {
-        'Authorization': 'Token ' + TOKEN,
+        'Authorization': 'Api-Key ' + APIKEY,
     }
     users_data = requests.get(HOST_API + 'categories/', headers=headers)
     json_users_data = users_data.json()
@@ -119,7 +119,7 @@ def get_categories() -> list:
 
 def add_categories(name: str, cat_type: str = 'EXP') -> dict:
     headers = {
-        'Authorization': 'Token ' + TOKEN,
+        'Authorization': 'Api-Key ' + APIKEY,
     }
     data = {
         'name': name,
@@ -132,7 +132,7 @@ def add_categories(name: str, cat_type: str = 'EXP') -> dict:
 
 def del_categories(id: int) -> int:
     headers = {
-        'Authorization': 'Token ' + TOKEN,
+        'Authorization': 'Api-Key ' + APIKEY,
     }
     users_data = requests.delete(HOST_API + 'categories/' + str(id) + '/', headers=headers)
     # json_users_data = users_data.json()
@@ -141,7 +141,7 @@ def del_categories(id: int) -> int:
 
 def get_balance(chat_id: int) -> dict:
     headers = {
-        'Authorization': 'Token ' + TOKEN,
+        'Authorization': 'Api-Key ' + APIKEY,
     }
     data = {
         'chat_id': chat_id,
@@ -153,13 +153,13 @@ def get_balance(chat_id: int) -> dict:
 
 def get_categories_balance(chat_id: int, cat_type: str) -> dict:
     headers = {
-        'Authorization': 'Token ' + TOKEN,
+        'Authorization': 'Api-Key ' + APIKEY,
     }
     data = {
         'chat_id': chat_id,
         'cat_type': cat_type
     }
-    users_data = requests.post(HOST_API + 'operations/balance/', headers=headers, json=data)
+    users_data = requests.get(HOST_API + 'operations/cat_balance/', headers=headers, json=data)
     json_users_data = users_data.json()
     return json_users_data
 
