@@ -9,11 +9,30 @@ from matplotlib_test.examples import *
 
 TOKEN = '5065010726:AAGDDYrw3cQVshBNBSqklLSTjgT2GauBBYM'
 
+# used to temporarily store collected information. separately for each user
+user_dict = {}
+
+
 # used to temporarily store collected information
 class CategoryCreate():
-    def __init__(self, cat_type: str = None, name:str = None):
+    def __init__(self, cat_type: str = None, name: str = None, message_id: int = None, backstep: str = None):
         self.cat_type = cat_type
         self.name = name
+        self.message_id = message_id
+        self.backstep = backstep
+
+
+# used to temporarily store collected information
+class OperationCreate():
+    def __init__(self, title: str = None, description: str = None, amount: float = None, category: int = None,
+                 chat_id: int = None, message_id: int = None, backstep: str = None):
+        self.title = title
+        self.description = description
+        self.amount = amount
+        self.category = category
+        self.chat_id = chat_id
+        self.message_id = message_id
+        self.backstep = backstep
 
 
 bot = telebot.TeleBot(TOKEN)
@@ -172,10 +191,6 @@ def callback_inline(message):
     data = message.data.split('=')[-1][:-1]
     data2 = message.data.split('&')[2].removeprefix('act=')
     data3 = message.data.split('&')[1].removeprefix('step3=')
-    print(data)
-    print(data2)
-    print(data3)
-
     kb_previous = Keyboa(items={
         '⬅ Вернуться на шаг назад': f'&act={data2}&type={data}$'
     }).keyboard
@@ -193,9 +208,18 @@ def callback_inline(message):
                               text=text)
     if data2 == 'add':
         if data3 == 'newcat':
-            msg = bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_previous,
+            msg = bot.edit_message_text(chat_id=chat_id, message_id=message_id,
                                         text='Введите название категории')
+            user_dict[chat_id] = CategoryCreate(cat_type=data, message_id=message_id,
+                                                backstep='&' + message.data.split('&', maxsplit=2)[2])
             bot.register_next_step_handler(msg, process_create_category)
+        if data3.isnumeric():
+            msg = bot.edit_message_text(chat_id=chat_id, message_id=message_id,
+                                        text='Введите название операции')
+            user_dict[chat_id] = OperationCreate(category=data3, chat_id=chat_id, message_id=message_id,
+                                                 backstep='&' + message.data.split('&', maxsplit=3)[3])
+            bot.register_next_step_handler(msg, process_create_operation)
+            print('current', message_id)
 
 
 @bot.message_handler(func=lambda message: True)
@@ -204,9 +228,58 @@ def echo_all(message):
     bot.reply_to(message, message.text)
 
 
+# below next step handlers
 def process_create_category(message):
-    print(message.text)
-    print('Ввод сработал')
+    chat_id = message.chat.id
+    category = user_dict[chat_id]
+    category.name = message.text
+    bot.delete_message(chat_id=chat_id, message_id=category.message_id)
+    add_categories(category.name, category.cat_type)
+    kb_next = Keyboa(items={
+        'Продолжить ➡': category.backstep
+    }).keyboard
+    bot.send_message(chat_id=chat_id, text=f'атегория {category.name} добавлена.', reply_markup=kb_next)
+
+
+def process_create_operation(message):
+    chat_id = message.chat.id
+    operation = user_dict[chat_id]
+    operation.title = message.text
+    bot.delete_message(chat_id=chat_id, message_id=operation.message_id)
+    print('delete', operation.message_id)
+    print('current', message.id)
+    operation.message_id = message.id
+    msg = bot.send_message(chat_id=chat_id, text='Введите описание операции')
+    bot.register_next_step_handler(msg, process_create_operation_2)
+
+
+def process_create_operation_2(message):
+    chat_id = message.chat.id
+    operation = user_dict[chat_id]
+    operation.description = message.text
+    bot.delete_message(chat_id=chat_id, message_id=operation.message_id)
+    print('delete', operation.message_id)
+    print('current', message.id)
+    operation.message_id = message.id
+    msg = bot.send_message(chat_id=chat_id, text='Введите сумму операции')
+    bot.register_next_step_handler(msg, process_create_operation_3)
+
+
+def process_create_operation_3(message):
+    chat_id = message.chat.id
+    operation = user_dict[chat_id]
+    bot.delete_message(chat_id=chat_id, message_id=operation.message_id)
+    print('delete', operation.message_id)
+    print('current', message.id)
+    try:
+        float(message.text)
+    except ValueError:
+
+        msg = bot.send_message(chat_id=chat_id, text='Ошибка! Введите число')
+        bot.register_next_step_handler(msg, process_create_operation_3)
+        operation.message_id = message.id
+        return
+    pass
 
 
 bot.infinity_polling()
