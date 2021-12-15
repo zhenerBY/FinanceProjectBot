@@ -9,6 +9,13 @@ from matplotlib_test.examples import *
 
 TOKEN = '5065010726:AAGDDYrw3cQVshBNBSqklLSTjgT2GauBBYM'
 
+# used to temporarily store collected information
+class CategoryCreate():
+    def __init__(self, cat_type: str = None, name:str = None):
+        self.cat_type = cat_type
+        self.name = name
+
+
 bot = telebot.TeleBot(TOKEN)
 
 
@@ -37,7 +44,7 @@ def kb_start(message):
     message_id = message.message.id
     kb_balance = Keyboa(items={
         '📊 Баланс': 'show_balance',
-    }).keyboard
+    }, front_marker="&type=", back_marker="$").keyboard
     kb_inc_exp = Keyboa(items=[
         {'Доходы': 'INC'},
         {'Расходы': 'EXP'},
@@ -51,141 +58,155 @@ def kb_start(message):
         bot.send_message(chat_id=chat_id, reply_markup=kb_first, text='Выберите необходимое действие')
 
 
-@bot.callback_query_handler(func=lambda call: call.data == 'show_balance')
-def callback_inline(message):
-    chat_id = message.message.chat.id
-    first_name = message.message.chat.first_name
-    message_id = message.message.id
-    kb_menu = Keyboa(items={
-        '⬆ Вернуться в основное меню': 'main_menu'
-    }).keyboard
-    get_balance_pie_chart(user_id=chat_id)
-    bot.delete_message(chat_id=chat_id, message_id=message_id)
-    bot.send_photo(chat_id=chat_id, photo=open(f'picts/{chat_id}_balance.png', 'rb'), reply_markup=kb_menu,
-                   caption=f'{first_name}, баланс Ваших расходов и доходов:')
-    os.remove(f'picts/{chat_id}_balance.png')
-
-
 @bot.callback_query_handler(func=lambda call: re.match(r'^&type=', call.data))
 def callback_inline(message):
     chat_id = message.message.chat.id
     message_id = message.message.id
+    first_name = message.message.chat.first_name
     data = message.data.split('=')[-1][:-1]
-    if data == 'INC':
-        act = 'доход'
-    else:
-        act = 'расход'
-    kb_show = Keyboa(items=[
-        {f'📊 Диаграма {act}ов': f'show_diagram_{data}'},
-        {f'📄 Просмотреть {act}ы': f'show_detail_{data}'},
-    ], items_in_row=2).keyboard
-    kb_act = Keyboa(items=[
-        {f'➕ Добавить {act}': 'add'},
-        {f'❌ Удалить {act}': 'del'},
-    ], front_marker="&act=", back_marker=message.data, items_in_row=2).keyboard
-    kb_menu = Keyboa(items={
-        '⬆ Вернуться в основное меню': 'main_menu'
-    }).keyboard
-    kb_second = Keyboa.combine(keyboards=(kb_show, kb_act, kb_menu))
-    bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
-                          text='Выберите следующее действие')
+    if data in ('INC', 'EXP'):
+        if data == 'INC':
+            act = 'доход'
+        else:
+            act = 'расход'
+        kb_show = Keyboa(items=[
+            {f'📊 Диаграма {act}ов': f'show_diagram'},
+            {f'📄 Просмотреть {act}ы': f'show'},
+        ], front_marker="&act=", back_marker=message.data, items_in_row=2).keyboard
+        kb_act = Keyboa(items=[
+            {f'➕ Добавить {act}': 'add'},
+            {f'❌ Удалить {act}': 'del'},
+        ], front_marker="&act=", back_marker=message.data, items_in_row=2).keyboard
+        kb_menu = Keyboa(items={
+            '⬆ Вернуться в основное меню': 'main_menu'
+        }).keyboard
+        kb_second = Keyboa.combine(keyboards=(kb_show, kb_act, kb_menu))
+        if message.message.text is not None:
+            bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
+                                  text='Выберите следующее действие')
+        else:
+            bot.delete_message(chat_id=chat_id, message_id=message_id)
+            bot.send_message(chat_id=chat_id, reply_markup=kb_second, text='Выберите следующее действие')
+    if data == 'show_balance':
+        kb_menu = Keyboa(items={
+            '⬆ Вернуться в основное меню': 'main_menu'
+        }).keyboard
+        get_balance_pie_chart(user_id=chat_id)
+        bot.delete_message(chat_id=chat_id, message_id=message_id)
+        bot.send_photo(chat_id=chat_id, photo=open(f'picts/{chat_id}_balance.png', 'rb'), reply_markup=kb_menu,
+                       caption=f'{first_name}, баланс Ваших расходов и доходов:')
+        os.remove(f'picts/{chat_id}_balance.png')
 
 
-@bot.callback_query_handler(func=lambda call: re.match(r'^&act=add', call.data))
+@bot.callback_query_handler(func=lambda call: re.match(r'^&act=', call.data))
 def callback_inline(message):
     chat_id = message.message.chat.id
     message_id = message.message.id
+    first_name = message.message.chat.first_name
     data = message.data.split('=')[-1][:-1]
+    data2 = message.data.split('&')[1].removeprefix('act=')
+    operations = get_operations(chat_id, data)
     categories = get_categories(data)
     items = []
-    for element in categories:
-        items.append({element['name']: element['id']})
-    kb_cat = Keyboa(items=items, front_marker="&id=", back_marker=message.data, items_in_row=3).keyboard
-    kb_add = Keyboa(items=[{'➕ Добавить категорию': 'addcat'}], front_marker="&addcat=", back_marker=message.data,
-                    items_in_row=3).keyboard
-    kb_previous = Keyboa(items={
-        '⬅ Вернуться на шаг назад ': '&' + message.data.split('&')[-1]
-    }).keyboard
-    kb_menu = Keyboa(items={
-        '⬆ Вернуться в основное меню': 'main_menu'
-    }).keyboard
-    kb_second = Keyboa.combine(keyboards=(kb_cat, kb_add, kb_previous, kb_menu))
-    bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
-                          text='Выберите категорию')
+    if data == 'INC':
+        act = 'доход'
+    else:
+        act = 'расход'
+    if data2 == 'add':
+        for element in categories:
+            items.append({element['name']: element['id']})
+        kb_cat = Keyboa(items=items, front_marker="&step3=", back_marker=message.data, items_in_row=3).keyboard
+        kb_add = Keyboa(items=[{'➕ Добавить категорию': 'newcat'}], front_marker="&step3=", back_marker=message.data,
+                        items_in_row=3).keyboard
+        kb_previous = Keyboa(items={
+            '⬅ Вернуться на шаг назад ': '&' + message.data.split('&')[-1]
+        }).keyboard
+        kb_menu = Keyboa(items={
+            '⬆ Вернуться в основное меню': 'main_menu'
+        }).keyboard
+        kb_second = Keyboa.combine(keyboards=(kb_cat, kb_add, kb_previous, kb_menu))
+        bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
+                              text='Выберите категорию')
+    elif data2 == 'del':
+        for element in operations:
+            items.append({element['title']: element['id']})
+        kb_cat = Keyboa(items=items, front_marker="&step3=", back_marker=message.data, items_in_row=2).keyboard
+        kb_previous = Keyboa(items={
+            '⬅ Вернуться на шаг назад': '&' + message.data.split('&')[-1]
+        }).keyboard
+        kb_menu = Keyboa(items={
+            '⬆ Вернуться в основное меню': 'main_menu'
+        }).keyboard
+        kb_second = Keyboa.combine(keyboards=(kb_cat, kb_previous, kb_menu))
+        bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
+                              text='Что хотите удалить?')
+    elif data2 == 'show_diagram':
+        kb_menu = Keyboa(items={
+            '⬅ Вернуться на шаг назад': '&type=' + data + '$'
+        }).keyboard
+        get_categories_type_pie_chart(user_id=chat_id, cat_type=data)
+        bot.delete_message(chat_id=chat_id, message_id=message_id)
+        bot.send_photo(chat_id=chat_id, photo=open(f'picts/{chat_id}_categories_type.png', 'rb'), reply_markup=kb_menu,
+                       caption=f'{first_name}, диаграма Ваших {act}ов:')
+        os.remove(f'picts/{chat_id}_categories_type.png')
+    elif data2 == 'show':
+        for element in operations:
+            items.append({element['title']: element['id']})
+        kb_cat = Keyboa(items=items, front_marker="&step3=", back_marker=message.data, items_in_row=2).keyboard
+        kb_previous = Keyboa(items={
+            '⬅ Вернуться на шаг назад': '&type=' + data + '$'
+        }).keyboard
+        kb_menu = Keyboa(items={
+            '⬆ Вернуться в основное меню': 'main_menu'
+        }).keyboard
+        kb_second = Keyboa.combine(keyboards=(kb_cat, kb_previous, kb_menu))
+        bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
+                              text=f'Выберите {act} для детального отображения?')
 
 
-@bot.callback_query_handler(func=lambda call: re.match(r'^&act=del', call.data))
+@bot.callback_query_handler(func=lambda call: re.match(r'^&step3=', call.data))
 def callback_inline(message):
     chat_id = message.message.chat.id
     message_id = message.message.id
-    data = message.data.split('=')[-1][:-1]
-    categories = get_operations(chat_id, data)
-    items = []
-    for element in categories:
-        items.append({element['title']: element['id']})
-    kb_cat = Keyboa(items=items, front_marker="&id=", back_marker=message.data, items_in_row=2).keyboard
-    kb_add = Keyboa(items=[{'➕ Добавить категорию': 'addcat'}], front_marker="&addcat=", back_marker=message.data,
-                    items_in_row=3).keyboard
-    kb_previous = Keyboa(items={
-        '⬅ Вернуться на шаг назад': '&' + message.data.split('&')[-1]
-    }).keyboard
-    kb_menu = Keyboa(items={
-        '⬆ Вернуться в основное меню': 'main_menu'
-    }).keyboard
-    kb_second = Keyboa.combine(keyboards=(kb_cat, kb_add, kb_previous, kb_menu))
-    bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
-                          text='Что хотите удалить?')
-
-
-@bot.callback_query_handler(func=lambda call: re.match(r'^show_diagram', call.data))
-def callback_inline(message):
-    chat_id = message.message.chat.id
     first_name = message.message.chat.first_name
-    message_id = message.message.id
-    data = message.data.split('_')[-1]
-    if data == 'INC':
-        act = 'доход'
-    else:
-        act = 'расход'
-    kb_menu = Keyboa(items={
-        '⬆ Вернуться в основное меню': 'main_menu'
-    }).keyboard
-    get_categories_type_pie_chart(user_id=chat_id, cat_type=data)
-    bot.delete_message(chat_id=chat_id, message_id=message_id)
-    bot.send_photo(chat_id=chat_id, photo=open(f'picts/{chat_id}_categories_type.png', 'rb'), reply_markup=kb_menu,
-                   caption=f'{first_name}, диаграма Ваших {act}ов:')
-    os.remove(f'picts/{chat_id}_categories_type.png')
+    data = message.data.split('=')[-1][:-1]
+    data2 = message.data.split('&')[2].removeprefix('act=')
+    data3 = message.data.split('&')[1].removeprefix('step3=')
+    print(data)
+    print(data2)
+    print(data3)
 
-
-@bot.callback_query_handler(func=lambda call: re.match(r'^show_detail_', call.data))
-def callback_inline(message):
-    chat_id = message.message.chat.id
-    message_id = message.message.id
-    data = message.data.split('_')[-1]
-    operations = get_operations(chat_id, data)
-    if data == 'INC':
-        act = 'доход'
-    else:
-        act = 'расход'
-    items = []
-    for element in operations:
-        items.append({element['title']: element['id']})
-    kb_cat = Keyboa(items=items, front_marker="&id=", back_marker=message.data, items_in_row=2).keyboard
     kb_previous = Keyboa(items={
-        '⬅ Вернуться на шаг назад': '&type=' + data + '$'
+        '⬅ Вернуться на шаг назад': f'&act={data2}&type={data}$'
     }).keyboard
     kb_menu = Keyboa(items={
         '⬆ Вернуться в основное меню': 'main_menu'
     }).keyboard
-    kb_second = Keyboa.combine(keyboards=(kb_cat, kb_previous, kb_menu))
-    bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
-                          text=f'Выберите {act} для детального отображения?')
+    if data2 == 'show':
+        operation = get_operation(chat_id, data3)
+        text = f'Название: {operation["title"]}\nОписание: {operation["description"]}\nСумма: {operation["amount"]}\n' \
+               f'Категория: {operation["category"]["name"]}\nСоздано: {operation["created_at"]}'
+        kb_edit = Keyboa(items=[{'✏ Редактировать операцию': 'edit'}], front_marker="&step4=",
+                         back_marker=message.data).keyboard
+        kb_all = Keyboa.combine(keyboards=(kb_edit, kb_previous, kb_menu))
+        bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
+                              text=text)
+    if data2 == 'add':
+        if data3 == 'newcat':
+            msg = bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_previous,
+                                        text='Введите название категории')
+            bot.register_next_step_handler(msg, process_create_category)
 
 
 @bot.message_handler(func=lambda message: True)
 def echo_all(message):
     print(message.text)
     bot.reply_to(message, message.text)
+
+
+def process_create_category(message):
+    print(message.text)
+    print('Ввод сработал')
 
 
 bot.infinity_polling()

@@ -67,6 +67,19 @@ def get_operations(chat_id: int = None, cat_type: str = None) -> list:
     return json_users_data
 
 
+# get detailed information
+def get_operation(chat_id: int, id: int) -> dict:
+    headers = {
+        'Authorization': 'Api-Key ' + APIKEY,
+    }
+    data = {
+        'chat_id': chat_id,
+    }
+    users_data = requests.get(HOST_API + 'ext_operations/' + str(id) + '/', json=data, headers=headers)
+    json_users_data = users_data.json()
+    return json_users_data
+
+
 # get list of dict {name:id}
 def get_list_of_name_operations(chat_id: int, cat_type: str) -> list:
     headers = {
