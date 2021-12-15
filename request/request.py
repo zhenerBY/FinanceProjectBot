@@ -206,12 +206,12 @@ def get_categories_balance(chat_id: int, cat_type: str) -> dict:
 
 # use only if token doesn't exist
 # !!! NOT 4 BOT !!!
-def create_jrf_token(username: str) -> str:
-    from rest_framework.authtoken.models import Token
-    from main.models import AdvUser
-    user = AdvUser.objects.get(username=username)
-    token = Token.objects.create(user=user)
-    return token.key
+# def create_jrf_token(username: str) -> str:
+#     from rest_framework.authtoken.models import Token
+#     from main.models import AdvUser
+#     user = AdvUser.objects.get(username=username)
+#     token = Token.objects.create(user=user)
+#     return token.key
 
 
 # get JWT token. Работает, но пока не используется.
