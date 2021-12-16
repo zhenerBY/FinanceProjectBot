@@ -42,3 +42,21 @@ def get_categories_type_pie_chart(user_id: int, cat_type: str):
     # safe file
     plt.savefig(f'picts/{user_id}_categories_type.png', transparent=True)
     # plt.show()
+
+
+def get_category_pie_chart(chat_id: int, category: int):
+    operations = get_operations(chat_id=chat_id, category=category)
+    labels = []
+    sizes = []
+    explode = []
+    for element in operations:
+        labels.append(element['title'])
+        sizes.append(element['amount'])
+        explode.append(0.05)
+    fig1, ax1 = plt.subplots()
+    ax1.pie(sizes, explode=explode, labels=labels, autopct=lambda pct: func(pct, sizes),
+            shadow=True, startangle=90)
+    ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
+    # safe file
+    plt.savefig(f'picts/{chat_id}_category.png', transparent=True)
+    # plt.show()

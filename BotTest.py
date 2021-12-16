@@ -25,14 +25,17 @@ class CategoryCreate():
 # used to temporarily store collected information
 class OperationCreate():
     def __init__(self, title: str = None, description: str = None, amount: float = None, category: int = None,
-                 chat_id: int = None, message_id: int = None, backstep: str = None):
+                 chat_id: int = None, id: int = None, message_id: int = None, backstep: str = None,
+                 service: str = 'create'):
         self.title = title
         self.description = description
         self.amount = amount
         self.category = category
         self.chat_id = chat_id
+        self.id = id
         self.message_id = message_id
         self.backstep = backstep
+        self.service = service
 
 
 bot = telebot.TeleBot(TOKEN)
@@ -46,7 +49,7 @@ def send_welcome(message):
 
 @bot.message_handler(commands=['help'])
 def send_welcome(message):
-    bot.send_message(chat_id=message.chat.id, text='Ученье — свет, а неученье — тьма')
+    bot.send_message(chat_id=message.chat.id, text='Незнание - сила!')
 
 
 @bot.message_handler(commands=['kbd'])
@@ -165,10 +168,6 @@ def callback_inline(message):
             {'Показать все': 'all'},
             {'Показать по категориям': 'cats'},
         ], front_marker="&step3=", back_marker=message.data, items_in_row=2).keyboard
-
-        # for element in operations:
-        #     items.append({element['title']: element['id']})
-        # kb_cat = Keyboa(items=items, front_marker="&step3=", back_marker=message.data, items_in_row=2).keyboard
         kb_second = Keyboa.combine(keyboards=(kb_show, kb_previous, kb_menu))
         bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
                               text=f'Выберите необходимый вариант')
@@ -258,15 +257,72 @@ def callback_inline(message):
     if data2 == 'show':
         if data4[:2] == 'op':
             operation = get_operation(chat_id, data4[2:])
-            text = f'Название: {operation["title"]}\nОписание: {operation["description"]}\nСумма: {operation["amount"]}\n' \
+            text = f'Название: {operation["title"]}\nОписание: {operation["description"]}\n' \
+                   f'Сумма: {operation["amount"]}\n' \
                    f'Категория: {operation["category"]["name"]}\nСоздано: {operation["created_at"]}'
-            kb_edit = Keyboa(items=[{'✏ Редактировать операцию': 'edit'}], front_marker="&step4=",
+            kb_edit = Keyboa(items=[{'✏ Редактировать операцию': 'edit'}], front_marker="&step5=",
                              back_marker=message.data).keyboard
             kb_all = Keyboa.combine(keyboards=(kb_edit, kb_previous, kb_menu))
             bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
                                   text=text)
         if data4[:2] == 'ct':
+            operations = get_operations(chat_id=chat_id, category=data4[2:])
+            for element in operations:
+                items.append({element['title']: element['id']})
+            kb_operations = Keyboa(items=items, front_marker="&step5=", back_marker=message.data,
+                                   items_in_row=2).keyboard
+            kb_diag = Keyboa(items=[
+                {f'📊 Диаграма {act}ов по категории': f'show_diagram_cat'},
+            ], front_marker="&step5=", back_marker=message.data).keyboard
+            kb_all = Keyboa.combine(keyboards=(kb_diag, kb_operations, kb_previous, kb_menu))
+            if message.message.text is not None:
+                bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
+                                      text=f'Выберите {act} для детального отображения.')
+            else:
+                bot.delete_message(chat_id=chat_id, message_id=message_id)
+                bot.send_message(chat_id=chat_id, reply_markup=kb_all,
+                                 text=f'Выберите {act} для детального отображения.')
 
+
+@bot.callback_query_handler(func=lambda call: re.match(r'^&step5=', call.data))
+def callback_inline(message):
+    chat_id = message.message.chat.id
+    message_id = message.message.id
+    first_name = message.message.chat.first_name
+    data = message.data.split('=')[-1][:-1]
+    data2 = message.data.split('&')[4].removeprefix('act=')
+    data3 = message.data.split('&')[3].removeprefix('step3=')
+    data4 = message.data.split('&')[2].removeprefix('step4=')
+    data5 = message.data.split('&')[1].removeprefix('step5=')
+    print(message.data, data, data2, data3, data4, data5)
+    items = []
+    if data == 'INC':
+        act = 'доход'
+    else:
+        act = 'расход'
+    kb_previous = Keyboa(items={
+        '⬅ Вернуться на шаг назад': f'&step4={data4}&step3={data3}&act={data2}&type={data}$'
+    }).keyboard
+    kb_menu = Keyboa(items={
+        '⬆ Вернуться в основное меню': 'main_menu'
+    }).keyboard
+    if data5 == 'show_diagram_cat':
+        get_category_pie_chart(chat_id=chat_id, category=data4[2:])
+        bot.delete_message(chat_id=chat_id, message_id=message_id)
+        bot.send_photo(chat_id=chat_id, photo=open(f'picts/{chat_id}_category.png', 'rb'),
+                       reply_markup=kb_previous,
+                       caption=f'Диаграма {act}ов по категории:')
+        os.remove(f'picts/{chat_id}_category.png')
+    elif data5.isdigit():
+        operation = get_operation(chat_id, data5)
+        text = f'Название: {operation["title"]}\nОписание: {operation["description"]}\n' \
+               f'Сумма: {operation["amount"]}\n' \
+               f'Категория: {operation["category"]["name"]}\nСоздано: {operation["created_at"]}'
+        kb_edit = Keyboa(items=[{'✏ Редактировать операцию': 'edit'}], front_marker="&step6=",
+                         back_marker=message.data).keyboard
+        kb_all = Keyboa.combine(keyboards=(kb_edit, kb_previous, kb_menu))
+        bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
+                              text=text)
 
 
 @bot.message_handler(func=lambda message: True)
@@ -321,13 +377,18 @@ def process_create_operation_3(message):
         return
     pass
     operation.amount = message.text
-    add_operations(title=operation.title, description=operation.description, amount=operation.amount,
-                   category=operation.category, chat_id=operation.chat_id)
-    print('oper created')
     kb_next = Keyboa(items={
         'Продолжить ➡': operation.backstep
     }).keyboard
-    bot.send_message(chat_id=chat_id, text=f'Операция {operation.title} добавлена.', reply_markup=kb_next)
+    if operation.service == 'create':
+        add_operations(title=operation.title, description=operation.description, amount=operation.amount,
+                       category=operation.category, chat_id=operation.chat_id)
+        bot.send_message(chat_id=chat_id, text=f'Операция {operation.title} добавлена.', reply_markup=kb_next)
+    elif operation.service == 'update':
+        partial_update_operations(id=operation.id, title=operation.title, description=operation.description,
+                                  amount=operation.amount,
+                                  category=operation.category, chat_id=operation.chat_id)
+        bot.send_message(chat_id=chat_id, text=f'Операция изменена.', reply_markup=kb_next)
 
 
 bot.infinity_polling()

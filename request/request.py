@@ -39,8 +39,9 @@ def add_api_users(chat_id, first_name: str = None) -> dict:
 
 
 # С аргументом - только операции пользователя, без - все
-# Set the value 'INC'|'EXP' for separated list
-def get_operations(chat_id: int = None, cat_type: str = None) -> list:
+# Set the value 'cat_type' 'INC'|'EXP' for separated list
+# !!! Do not use at the same time 'cat_type' and 'category'
+def get_operations(chat_id: int = None, cat_type: str = None, category: int = None) -> list:
     headers = {
         'Authorization': 'Api-Key ' + APIKEY,
     }
@@ -60,6 +61,10 @@ def get_operations(chat_id: int = None, cat_type: str = None) -> list:
                 item['category'] = item['category']['id']
                 tmp.append(item)
         json_users_data = tmp
+    elif category is not None:
+        data['category'] = category
+        users_data = requests.get(HOST_API + 'operations/', json=data, headers=headers)
+        json_users_data = users_data.json()
     else:
         users_data = requests.get(HOST_API + 'operations/', json=data, headers=headers)
         json_users_data = users_data.json()
