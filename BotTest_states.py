@@ -254,17 +254,13 @@ def callback_inline(message):
 
     if data2 == 'add':
         if data3 == 'newcat':
-            with bot.retrieve_data(message.from_user.id) as data:
-                data['cat_type'] = data
-                data['message_id'] = message_id
-                data['backstep'] = '&' + message.data.split('&', maxsplit=2)[2]
             bot.set_state(chat_id, CategoryStates.name)
-            bot.send_message(message.chat.id, 'Введите название операции\n(для отмены введите "/cancel")')
-            # msg = bot.edit_message_text(chat_id=chat_id, message_id=message_id,
-            #                             text='Введите название категории')
-            # user_dict[chat_id] = CategoryCreate(cat_type=data, message_id=message_id,
-            #                                     backstep='&' + message.data.split('&', maxsplit=2)[2])
-            # bot.register_next_step_handler(msg, process_create_category)
+            with bot.retrieve_data(chat_id) as r_data:
+                bot.delete_message(chat_id=chat_id, message_id=message_id)
+                r_data['cat_type'] = data
+                r_data['message_id'] = message_id
+                r_data['backstep'] = '&' + message.data.split('&', maxsplit=2)[2]
+            bot.send_message(chat_id=chat_id, text='Введите название операции\n(для отмены введите "/cancel")')
         elif data3.isnumeric():
             msg = bot.edit_message_text(chat_id=chat_id, message_id=message_id,
                                         text='Введите название операции')
@@ -340,7 +336,7 @@ def callback_inline(message):
     data3 = message.data.split('&')[3].removeprefix('st3=')
     data4 = message.data.split('&')[2].removeprefix('st4=')
     data5 = message.data.split('&')[1].removeprefix('st5=')
-    print(message.data, data, data2, data3, data4, data5)
+    # print(message.data, data, data2, data3, data4, data5)
     items = []
     if data == 'INC':
         act = 'доход'
@@ -371,34 +367,32 @@ def callback_inline(message):
                               text=text)
 
 
-@bot.message_handler(func=lambda message: True)
-def echo_all(message):
-    print(message.text)
-    bot.reply_to(message, message.text)
-
-
 # below states handlers
 @bot.message_handler(state="*", commands='cancel')
 def any_state(message):
     """
     Cancel state
     """
-    bot.send_message(message.chat.id, "Ввод отменен")
+    with bot.retrieve_data(message.from_user.id) as data:
+        kb_next = Keyboa(items={
+            'Продолжить ➡': data['backstep']
+        }).keyboard
+    bot.delete_message(chat_id=message.chat.id, message_id=message.message_id-1)
+    bot.send_message(message.chat.id, "Ввод отменен", reply_markup=kb_next)
     bot.delete_state(message.from_user.id)
 
 
 @bot.message_handler(state=CategoryStates.name)
 def category_name_get(message):
     with bot.retrieve_data(message.from_user.id) as data:
-        bot.delete_message(data['message_id'])
         data['name'] = message.text
-        data['message_id'] = message.chat.id
+        data['message_id'] = message.message_id
         backstep = data['backstep']
+        add_categories(name=message.text, cat_type=data['cat_type'])
     kb_next = Keyboa(items={
         'Продолжить ➡': backstep
     }).keyboard
     bot.send_message(chat_id=message.chat.id, text=f'Категория "{message.text}" добавлена.', reply_markup=kb_next)
-    print(bot.retrieve_data(message.from_user.id).__dict__)
     bot.delete_state(message.from_user.id)
 
 
@@ -462,8 +456,18 @@ def process_create_operation_3(message):
         bot.send_message(chat_id=chat_id, text=f'Операция изменена.', reply_markup=kb_next)
 
 
+# repeater
+@bot.message_handler(func=lambda message: True)
+def echo_all(message):
+    print(message.text)
+    bot.reply_to(message, message.text)
+
+
 bot.add_custom_filter(custom_filters.StateFilter(bot))
 bot.add_custom_filter(custom_filters.IsDigitFilter())
 bot.add_custom_filter(IsFloatFilter())
+
+# # set saving states into file.
+# bot.enable_saving_states() # you can delete this if you do not need to save states
 
 bot.infinity_polling()
