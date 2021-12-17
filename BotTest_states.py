@@ -1,16 +1,56 @@
-import telebot
-from keyboa import Keyboa, Button
-
-import re
 import os
+import re
 
-from request.request import *
+import telebot
+from keyboa import Keyboa
+from telebot import custom_filters, SimpleCustomFilter
+
 from matplotlib_test.examples import *
+from request.request import *
 
 TOKEN = '5065010726:AAGDDYrw3cQVshBNBSqklLSTjgT2GauBBYM'
 
 # used to temporarily store collected information. separately for each user
 user_dict = {}
+
+
+# Add Own custom filter
+class IsFloatFilter(SimpleCustomFilter):
+    """
+    Filter to check whether the string is made up of only digits.
+
+    Example:
+    @bot.message_handler(is_digit=True)
+    """
+    key = 'is_float'
+
+    def check(self, message):
+        try:
+            float(message.text)
+        except ValueError:
+            return False
+        return True
+
+
+# class for states
+class CategoryStates:
+    cat_type = 1
+    name = 2
+    message_id = 101
+    backstep = 102
+
+
+# class for states
+class OperationStates:
+    title = 1
+    description = 2
+    amount = 3
+    category = 4
+    chat_id = 5
+    id = 6
+    message_id = 101
+    backstep = 102
+    service = 103
 
 
 # used to temporarily store collected information
@@ -214,11 +254,17 @@ def callback_inline(message):
 
     if data2 == 'add':
         if data3 == 'newcat':
-            msg = bot.edit_message_text(chat_id=chat_id, message_id=message_id,
-                                        text='Введите название категории')
-            user_dict[chat_id] = CategoryCreate(cat_type=data, message_id=message_id,
-                                                backstep='&' + message.data.split('&', maxsplit=2)[2])
-            bot.register_next_step_handler(msg, process_create_category)
+            with bot.retrieve_data(message.from_user.id) as data:
+                data['cat_type'] = data
+                data['message_id'] = message_id
+                data['backstep'] = '&' + message.data.split('&', maxsplit=2)[2]
+            bot.set_state(chat_id, CategoryStates.name)
+            bot.send_message(message.chat.id, 'Введите название операции\n(для отмены введите "/cancel")')
+            # msg = bot.edit_message_text(chat_id=chat_id, message_id=message_id,
+            #                             text='Введите название категории')
+            # user_dict[chat_id] = CategoryCreate(cat_type=data, message_id=message_id,
+            #                                     backstep='&' + message.data.split('&', maxsplit=2)[2])
+            # bot.register_next_step_handler(msg, process_create_category)
         elif data3.isnumeric():
             msg = bot.edit_message_text(chat_id=chat_id, message_id=message_id,
                                         text='Введите название операции')
@@ -331,6 +377,31 @@ def echo_all(message):
     bot.reply_to(message, message.text)
 
 
+# below states handlers
+@bot.message_handler(state="*", commands='cancel')
+def any_state(message):
+    """
+    Cancel state
+    """
+    bot.send_message(message.chat.id, "Ввод отменен")
+    bot.delete_state(message.from_user.id)
+
+
+@bot.message_handler(state=CategoryStates.name)
+def category_name_get(message):
+    with bot.retrieve_data(message.from_user.id) as data:
+        bot.delete_message(data['message_id'])
+        data['name'] = message.text
+        data['message_id'] = message.chat.id
+        backstep = data['backstep']
+    kb_next = Keyboa(items={
+        'Продолжить ➡': backstep
+    }).keyboard
+    bot.send_message(chat_id=message.chat.id, text=f'Категория "{message.text}" добавлена.', reply_markup=kb_next)
+    print(bot.retrieve_data(message.from_user.id).__dict__)
+    bot.delete_state(message.from_user.id)
+
+
 # below next step handlers
 def process_create_category(message):
     chat_id = message.chat.id
@@ -390,5 +461,9 @@ def process_create_operation_3(message):
                                   category=operation.category, chat_id=operation.chat_id)
         bot.send_message(chat_id=chat_id, text=f'Операция изменена.', reply_markup=kb_next)
 
+
+bot.add_custom_filter(custom_filters.StateFilter(bot))
+bot.add_custom_filter(custom_filters.IsDigitFilter())
+bot.add_custom_filter(IsFloatFilter())
 
 bot.infinity_polling()
