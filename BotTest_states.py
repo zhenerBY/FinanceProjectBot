@@ -16,12 +16,6 @@ user_dict = {}
 
 # Add Own custom filter
 class IsFloatFilter(SimpleCustomFilter):
-    """
-    Filter to check whether the string is made up of only digits.
-
-    Example:
-    @bot.message_handler(is_digit=True)
-    """
     key = 'is_float'
 
     def check(self, message):
@@ -34,10 +28,7 @@ class IsFloatFilter(SimpleCustomFilter):
 
 # class for states
 class CategoryStates:
-    cat_type = 1
-    name = 2
-    message_id = 101
-    backstep = 102
+    name = 1
 
 
 # class for states
@@ -45,12 +36,6 @@ class OperationStates:
     title = 11
     description = 12
     amount = 13
-    category = 14
-    chat_id = 15
-    id = 16
-    message_id = 101
-    backstep = 102
-    service = 103
 
 
 # used to temporarily store collected information
@@ -269,12 +254,6 @@ def callback_inline(message):
                 r_data['chat_id'] = chat_id
                 r_data['backstep'] = '&' + message.data.split('&', maxsplit=3)[3]
             bot.send_message(chat_id=chat_id, text='Введите название операции\n(для отмены введите "/cancel")')
-
-            # msg = bot.edit_message_text(chat_id=chat_id, message_id=message_id,
-            #                             text='Введите название операции')
-            # user_dict[chat_id] = OperationCreate(category=data3, chat_id=chat_id, message_id=message_id,
-            #                                      backstep='&' + message.data.split('&', maxsplit=3)[3])
-            # bot.register_next_step_handler(msg, process_create_operation)
     if data2 == 'del':
         del_operations(id=data3)
         kb_next = Keyboa(items={
