@@ -42,12 +42,12 @@ class CategoryStates:
 
 # class for states
 class OperationStates:
-    title = 1
-    description = 2
-    amount = 3
-    category = 4
-    chat_id = 5
-    id = 6
+    title = 11
+    description = 12
+    amount = 13
+    category = 14
+    chat_id = 15
+    id = 16
     message_id = 101
     backstep = 102
     service = 103
@@ -84,7 +84,8 @@ bot = telebot.TeleBot(TOKEN)
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     add_api_users(chat_id=message.chat.id, first_name=message.chat.first_name)
-    bot.send_message(chat_id=message.chat.id, text=f'Hello {message.chat.first_name}!')
+    bot.send_message(chat_id=message.chat.id, text=f'Hello {message.chat.first_name}!\n'
+                                                   f'Для начала работы введите "/fin"')
 
 
 @bot.message_handler(commands=['help'])
@@ -92,7 +93,7 @@ def send_welcome(message):
     bot.send_message(chat_id=message.chat.id, text='Незнание - сила!')
 
 
-@bot.message_handler(commands=['kbd'])
+@bot.message_handler(commands=['fin'])
 def start(message):
     kb_start = Keyboa(items={
         'Начать работу': 'main_menu',
@@ -258,15 +259,22 @@ def callback_inline(message):
             with bot.retrieve_data(chat_id) as r_data:
                 bot.delete_message(chat_id=chat_id, message_id=message_id)
                 r_data['cat_type'] = data
-                r_data['message_id'] = message_id
                 r_data['backstep'] = '&' + message.data.split('&', maxsplit=2)[2]
-            bot.send_message(chat_id=chat_id, text='Введите название операции\n(для отмены введите "/cancel")')
+            bot.send_message(chat_id=chat_id, text='Введите название категории\n(для отмены введите "/cancel")')
         elif data3.isnumeric():
-            msg = bot.edit_message_text(chat_id=chat_id, message_id=message_id,
-                                        text='Введите название операции')
-            user_dict[chat_id] = OperationCreate(category=data3, chat_id=chat_id, message_id=message_id,
-                                                 backstep='&' + message.data.split('&', maxsplit=3)[3])
-            bot.register_next_step_handler(msg, process_create_operation)
+            bot.set_state(chat_id, OperationStates.title)
+            with bot.retrieve_data(chat_id) as r_data:
+                bot.delete_message(chat_id=chat_id, message_id=message_id)
+                r_data['category'] = data3
+                r_data['chat_id'] = chat_id
+                r_data['backstep'] = '&' + message.data.split('&', maxsplit=3)[3]
+            bot.send_message(chat_id=chat_id, text='Введите название операции\n(для отмены введите "/cancel")')
+
+            # msg = bot.edit_message_text(chat_id=chat_id, message_id=message_id,
+            #                             text='Введите название операции')
+            # user_dict[chat_id] = OperationCreate(category=data3, chat_id=chat_id, message_id=message_id,
+            #                                      backstep='&' + message.data.split('&', maxsplit=3)[3])
+            # bot.register_next_step_handler(msg, process_create_operation)
     if data2 == 'del':
         del_operations(id=data3)
         kb_next = Keyboa(items={
@@ -377,7 +385,7 @@ def any_state(message):
         kb_next = Keyboa(items={
             'Продолжить ➡': data['backstep']
         }).keyboard
-    bot.delete_message(chat_id=message.chat.id, message_id=message.message_id-1)
+    bot.delete_message(chat_id=message.chat.id, message_id=message.message_id - 1)
     bot.send_message(message.chat.id, "Ввод отменен", reply_markup=kb_next)
     bot.delete_state(message.from_user.id)
 
@@ -386,7 +394,6 @@ def any_state(message):
 def category_name_get(message):
     with bot.retrieve_data(message.from_user.id) as data:
         data['name'] = message.text
-        data['message_id'] = message.message_id
         backstep = data['backstep']
         add_categories(name=message.text, cat_type=data['cat_type'])
     kb_next = Keyboa(items={
@@ -396,64 +403,48 @@ def category_name_get(message):
     bot.delete_state(message.from_user.id)
 
 
-# below next step handlers
-def process_create_category(message):
-    chat_id = message.chat.id
-    category = user_dict[chat_id]
-    category.name = message.text
-    bot.delete_message(chat_id=chat_id, message_id=category.message_id)
-    add_categories(category.name, category.cat_type)
+@bot.message_handler(state=OperationStates.title)
+def operation_title_get(message):
+    bot.delete_message(chat_id=message.chat.id, message_id=message.message_id - 1)
+    bot.set_state(message.from_user.id, OperationStates.description)
+    with bot.retrieve_data(message.from_user.id) as data:
+        data['title'] = message.text
+    bot.send_message(chat_id=message.chat.id, text=f'Введите описание')
+
+
+@bot.message_handler(state=OperationStates.description)
+def operation_description_get(message):
+    bot.delete_message(chat_id=message.chat.id, message_id=message.message_id - 1)
+    bot.set_state(message.from_user.id, OperationStates.amount)
+    with bot.retrieve_data(message.from_user.id) as data:
+        data['description'] = message.text
+    bot.send_message(chat_id=message.chat.id, text=f'Введите сумму')
+
+
+@bot.message_handler(state=OperationStates.amount, is_float=True)
+def operation_amount_get(message):
+    bot.delete_message(chat_id=message.chat.id, message_id=message.message_id - 1)
+    with bot.retrieve_data(message.from_user.id) as data:
+        data['amount'] = message.text
+        backstep = data['backstep']
+        add_operations(title=data['title'], description=data['description'], amount=data['amount'],
+                       category=data['category'], chat_id=data['chat_id'])
     kb_next = Keyboa(items={
-        'Продолжить ➡': category.backstep
+        'Продолжить ➡': backstep
     }).keyboard
-    bot.send_message(chat_id=chat_id, text=f'Категория {category.name} добавлена.', reply_markup=kb_next)
+    bot.send_message(chat_id=message.chat.id, text=f'Продолжить', reply_markup=kb_next)
+    bot.delete_state(message.from_user.id)
 
 
-def process_create_operation(message):
-    chat_id = message.chat.id
-    operation = user_dict[chat_id]
-    operation.title = message.text
-    bot.delete_message(chat_id=chat_id, message_id=operation.message_id)
-    msg = bot.send_message(chat_id=chat_id, text='Введите описание операции')
-    operation.message_id = msg.message_id
-    bot.register_next_step_handler(msg, process_create_operation_2)
+@bot.message_handler(state=OperationStates.amount, is_float=False)
+def operation_amount_incorrect(message):
+    bot.delete_message(chat_id=message.chat.id, message_id=message.message_id - 1)
+    bot.send_message(message.chat.id, 'Введенное значение не является числом. Повторите ввод.')
 
-
-def process_create_operation_2(message):
-    chat_id = message.chat.id
-    operation = user_dict[chat_id]
-    operation.description = message.text
-    bot.delete_message(chat_id=chat_id, message_id=operation.message_id)
-    msg = bot.send_message(chat_id=chat_id, text='Введите сумму операции')
-    operation.message_id = msg.message_id
-    bot.register_next_step_handler(msg, process_create_operation_3)
-
-
-def process_create_operation_3(message):
-    chat_id = message.chat.id
-    operation = user_dict[chat_id]
-    bot.delete_message(chat_id=chat_id, message_id=operation.message_id)
-    try:
-        float(message.text)
-    except ValueError:
-        msg = bot.send_message(chat_id=chat_id, text='Ошибка! Введите число')
-        bot.register_next_step_handler(msg, process_create_operation_3)
-        operation.message_id = msg.message_id
-        return
-    pass
-    operation.amount = message.text
-    kb_next = Keyboa(items={
-        'Продолжить ➡': operation.backstep
-    }).keyboard
-    if operation.service == 'create':
-        add_operations(title=operation.title, description=operation.description, amount=operation.amount,
-                       category=operation.category, chat_id=operation.chat_id)
-        bot.send_message(chat_id=chat_id, text=f'Операция {operation.title} добавлена.', reply_markup=kb_next)
-    elif operation.service == 'update':
-        partial_update_operations(id=operation.id, title=operation.title, description=operation.description,
-                                  amount=operation.amount,
-                                  category=operation.category, chat_id=operation.chat_id)
-        bot.send_message(chat_id=chat_id, text=f'Операция изменена.', reply_markup=kb_next)
+    # partial_update_operations(id=operation.id, title=operation.title, description=operation.description,
+    #                           amount=operation.amount,
+    #                           category=operation.category, chat_id=operation.chat_id)
+    # bot.send_message(chat_id=chat_id, text=f'Операция изменена.', reply_markup=kb_next)
 
 
 # repeater
@@ -468,6 +459,6 @@ bot.add_custom_filter(custom_filters.IsDigitFilter())
 bot.add_custom_filter(IsFloatFilter())
 
 # # set saving states into file.
-# bot.enable_saving_states() # you can delete this if you do not need to save states
+# bot.enable_saving_states()  # you can delete this if you do not need to save states
 
 bot.infinity_polling()
