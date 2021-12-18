@@ -397,7 +397,7 @@ def operation_title_get(message):
     bot.set_state(message.from_user.id, OperationStates.description)
     with bot.retrieve_data(message.from_user.id) as data:
         data['title'] = message.text
-    bot.send_message(chat_id=message.chat.id, text=f'Введите описание')
+    bot.send_message(chat_id=message.chat.id, text=f'Введите описание\n(для отмены введите "/cancel")')
 
 
 @bot.message_handler(state=OperationStates.description)
@@ -406,7 +406,7 @@ def operation_description_get(message):
     bot.set_state(message.from_user.id, OperationStates.amount)
     with bot.retrieve_data(message.from_user.id) as data:
         data['description'] = message.text
-    bot.send_message(chat_id=message.chat.id, text=f'Введите сумму')
+    bot.send_message(chat_id=message.chat.id, text=f'Введите сумму\n(для отмены введите "/cancel")')
 
 
 @bot.message_handler(state=OperationStates.amount, is_float=True)
