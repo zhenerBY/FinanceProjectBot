@@ -137,7 +137,7 @@ def callback_inline(message):
     else:
         act = 'расход'
     if data2 == 'add':
-        categories = get_categories(data)
+        categories = get_categories(cat_type=data)
         for element in categories:
             items.append({element['name']: element['id']})
         kb_cat = Keyboa(items=items, front_marker="&st3=", back_marker=message.data, items_in_row=3).keyboard
@@ -202,7 +202,7 @@ def callback_inline(message):
             bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
                                   text=f'Выберите {act} для детального отображения.')
         if data3 == 'cats':
-            categories = get_categories(data)
+            categories = get_categories(cat_type=data, chat_id=chat_id)
             for element in categories:
                 items.append({element['name']: element['id']})
             kb_cat = Keyboa(items=items, front_marker="&st4=ct", back_marker=message.data, items_in_row=3).keyboard
