@@ -253,6 +253,7 @@ def callback_inline(message):
                 r_data['category'] = data3
                 r_data['chat_id'] = chat_id
                 r_data['backstep'] = '&' + message.data.split('&', maxsplit=3)[3]
+                r_data['operation'] = 'create'
             bot.send_message(chat_id=chat_id, text='Введите название операции\n(для отмены введите "/cancel")')
     if data2 == 'del':
         del_operations(id=data3)
@@ -352,6 +353,42 @@ def callback_inline(message):
         kb_all = Keyboa.combine(keyboards=(kb_edit, kb_previous, kb_menu))
         bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
                               text=text)
+    elif data5 == 'edit':
+        bot.set_state(chat_id, OperationStates.title)
+        with bot.retrieve_data(chat_id) as r_data:
+            bot.delete_message(chat_id=chat_id, message_id=message_id)
+            r_data['id'] = data4[2:]
+            r_data['chat_id'] = chat_id
+            r_data['backstep'] = '&st4=' + data4 + '&st3=' + data3 + \
+                                 '&st2=' + data2 + '&st1=' + data + '$'
+            r_data['operation'] = 'change'
+        bot.send_message(chat_id=chat_id, text='Введите название операции\n(для отмены введите "/cancel")')
+        pass
+
+
+@bot.callback_query_handler(func=lambda call: re.match(r'^&st6=', call.data))
+def callback_inline(message):
+    chat_id = message.message.chat.id
+    message_id = message.message.id
+    first_name = message.message.chat.first_name
+    data = message.data.split('=')[-1][:-1]
+    data2 = message.data.split('&')[5].removeprefix('st2=')
+    data3 = message.data.split('&')[4].removeprefix('st3=')
+    data4 = message.data.split('&')[3].removeprefix('st4=')
+    data5 = message.data.split('&')[2].removeprefix('st5=')
+    data6 = message.data.split('&')[1].removeprefix('st6=')
+    # print(message.data, data, data2, data3, data4, data5, data6)
+    if data6 == 'edit':
+        bot.set_state(chat_id, OperationStates.title)
+        with bot.retrieve_data(chat_id) as r_data:
+            bot.delete_message(chat_id=chat_id, message_id=message_id)
+            r_data['id'] = data5
+            r_data['chat_id'] = chat_id
+            r_data['category'] = data4[2:]
+            r_data['backstep'] = '&st5=' + data5 + '&st4=' + data4 + '&st3=' + data3 + \
+                                 '&st2=' + data2 + '&st1=' + data + '$'
+            r_data['operation'] = 'change'
+        bot.send_message(chat_id=chat_id, text='Введите название операции\n(для отмены введите "/cancel")')
 
 
 # below states handlers
@@ -406,8 +443,15 @@ def operation_amount_get(message):
     with bot.retrieve_data(message.from_user.id) as data:
         data['amount'] = message.text
         backstep = data['backstep']
-        add_operations(title=data['title'], description=data['description'], amount=data['amount'],
-                       category=data['category'], chat_id=data['chat_id'])
+        if data['operation'] == 'create':
+            add_operations(title=data['title'], description=data['description'], amount=data['amount'],
+                           category=data['category'], chat_id=data['chat_id'])
+        elif data['operation'] == 'change':
+            keys = {}
+            for element in data:
+                if data[element] is not None:
+                    keys[element] = data[element]
+            partial_update_operations(**keys)
     kb_next = Keyboa(items={
         'Продолжить ➡': backstep
     }).keyboard
