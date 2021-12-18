@@ -2,16 +2,13 @@ import os
 import re
 
 import telebot
-from keyboa import Keyboa
 from telebot import custom_filters, SimpleCustomFilter
+from keyboa import Keyboa
 
 from matplotlib_test.examples import *
 from request.request import *
 
 TOKEN = '5065010726:AAGDDYrw3cQVshBNBSqklLSTjgT2GauBBYM'
-
-# used to temporarily store collected information. separately for each user
-user_dict = {}
 
 
 # Add Own custom filter
@@ -36,31 +33,6 @@ class OperationStates:
     title = 11
     description = 12
     amount = 13
-
-
-# used to temporarily store collected information
-class CategoryCreate():
-    def __init__(self, cat_type: str = None, name: str = None, message_id: int = None, backstep: str = None):
-        self.cat_type = cat_type
-        self.name = name
-        self.message_id = message_id
-        self.backstep = backstep
-
-
-# used to temporarily store collected information
-class OperationCreate():
-    def __init__(self, title: str = None, description: str = None, amount: float = None, category: int = None,
-                 chat_id: int = None, id: int = None, message_id: int = None, backstep: str = None,
-                 service: str = 'create'):
-        self.title = title
-        self.description = description
-        self.amount = amount
-        self.category = category
-        self.chat_id = chat_id
-        self.id = id
-        self.message_id = message_id
-        self.backstep = backstep
-        self.service = service
 
 
 bot = telebot.TeleBot(TOKEN)
@@ -463,11 +435,6 @@ def operation_amount_get(message):
 def operation_amount_incorrect(message):
     bot.delete_message(chat_id=message.chat.id, message_id=message.message_id - 1)
     bot.send_message(message.chat.id, 'Введенное значение не является числом. Повторите ввод.')
-
-    # partial_update_operations(id=operation.id, title=operation.title, description=operation.description,
-    #                           amount=operation.amount,
-    #                           category=operation.category, chat_id=operation.chat_id)
-    # bot.send_message(chat_id=chat_id, text=f'Операция изменена.', reply_markup=kb_next)
 
 
 # repeater
