@@ -90,7 +90,7 @@ def callback_inline(message):
         else:
             act = 'расход'
         kb_show = Keyboa(items=[
-            {f'📊 Диаграма {act}ов': f'show_diagram'},
+            {f'📊 Диаграмма {act}ов': f'show_diagram'},
             {f'📄 Просмотреть {act}ы': f'show'},
         ], front_marker="&st2=", back_marker=message.data, items_in_row=2).keyboard
         kb_act = Keyboa(items=[
@@ -159,7 +159,7 @@ def callback_inline(message):
         bot.delete_message(chat_id=chat_id, message_id=message_id)
         bot.send_photo(chat_id=chat_id, photo=open(f'picts/{chat_id}_categories_type.png', 'rb'),
                        reply_markup=kb_previous,
-                       caption=f'{first_name}, диаграма Ваших {act}ов:')
+                       caption=f'{first_name}, диаграмма Ваших {act}ов:')
         os.remove(f'picts/{chat_id}_categories_type.png')
     elif data2 == 'show':
         kb_show = Keyboa(items=[
@@ -274,7 +274,7 @@ def callback_inline(message):
             kb_operations = Keyboa(items=items, front_marker="&st5=", back_marker=message.data,
                                    items_in_row=2).keyboard
             kb_diag = Keyboa(items=[
-                {f'📊 Диаграма {act}ов по категории': f'diag'},
+                {f'📊 Диаграмма {act}ов по категории': f'diag'},
             ], front_marker="&st5=", back_marker=message.data).keyboard
             kb_all = Keyboa.combine(keyboards=(kb_diag, kb_operations, kb_previous, kb_menu))
             if message.message.text is not None:
@@ -313,7 +313,7 @@ def callback_inline(message):
         bot.delete_message(chat_id=chat_id, message_id=message_id)
         bot.send_photo(chat_id=chat_id, photo=open(f'picts/{chat_id}_category.png', 'rb'),
                        reply_markup=kb_previous,
-                       caption=f'Диаграма {act}ов по категории:')
+                       caption=f'Диаграмма {act}ов по категории:')
         os.remove(f'picts/{chat_id}_category.png')
     elif data5.isdigit():
         operation = get_operation(chat_id, data5)
