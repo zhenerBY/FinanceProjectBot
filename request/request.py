@@ -25,17 +25,48 @@ def get_api_users_list(chat_id: int = None) -> list:
     return json_users_data
 
 
-def add_api_users(chat_id, first_name: str = None) -> dict:
+# use kwargs name from ApiUserModel
+def partial_update_api_users(id: int, **kwargs) -> dict:
+    headers = {
+        'Authorization': 'Api-Key ' + APIKEY,
+    }
+    data = {}
+    data['id'] = id
+    for element in kwargs:
+        data[element] = kwargs[element]
+    response = requests.patch(HOST_API + 'apiusers/' + str(id) + '/', json=data, headers=headers)
+    json_responce = response.json()
+    return json_responce
+
+
+def add_api_users(chat_id, first_name: str = None, last_name: str = None, username: str = None) -> dict:
     headers = {
         'Authorization': 'Api-Key ' + APIKEY,
     }
     data = {
         'chat_id': chat_id,
         'first_name': first_name,
+        'last_name': last_name,
+        'username': username,
     }
     users_data = requests.post(HOST_API + 'apiusers/', json=data, headers=headers)
     json_users_data = users_data.json()
+    json_users_data['status_code'] = users_data.status_code
     return json_users_data
+
+
+def add_or_update_api_user(chat_id: int, **kwargs):
+    response = get_api_users_list(chat_id=chat_id)
+    if response == []:
+        return add_api_users(chat_id, **kwargs)
+    update_dict = {}
+    for elemet in kwargs:
+        if kwargs[elemet] == response[0][elemet]:
+            pass
+        else:
+            update_dict[elemet] = kwargs[elemet]
+    if update_dict != {}:
+        partial_update_api_users(id=response[0]['id'], **update_dict)
 
 
 # С аргументом - только операции пользователя, без - все
@@ -165,7 +196,7 @@ def get_categories(cat_type: str = None, chat_id: int = None) -> list:
     if chat_id is None:
         users_data = requests.get(HOST_API + 'categories/', headers=headers)
     else:
-        users_data = requests.get(HOST_API + 'categories/', headers=headers, json={'chat_id':chat_id})
+        users_data = requests.get(HOST_API + 'categories/', headers=headers, json={'chat_id': chat_id})
     json_users_data = users_data.json()
     if cat_type is None:
         json_users_data = json_users_data

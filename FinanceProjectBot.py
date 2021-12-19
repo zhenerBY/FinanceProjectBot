@@ -9,7 +9,8 @@ from keyboa import Keyboa
 from BotAdditional import parser, act_EXP_INC
 from bot_matplotlib.matplotlib import get_balance_pie_chart, get_categories_type_pie_chart, get_category_pie_chart
 from request.request import get_categories, add_api_users, get_operations, del_operations, get_operation, \
-    add_categories, add_operations, partial_update_operations
+    add_categories, add_operations, partial_update_operations, partial_update_api_users, get_api_users_list, \
+    add_or_update_api_user
 
 load_dotenv()
 
@@ -47,7 +48,8 @@ bot = telebot.TeleBot(BOT_TOKEN)
 
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
-    add_api_users(chat_id=message.chat.id, first_name=message.chat.first_name)
+    add_or_update_api_user(chat_id=message.chat.id, first_name=message.chat.first_name,
+                           last_name=message.chat.last_name, username=message.chat.username)
     bot.send_message(chat_id=message.chat.id, text=f'Hello {message.chat.first_name}!\n'
                                                    f'Для начала работы введите "/fin"')
 
@@ -59,6 +61,8 @@ def send_welcome(message):
 
 @bot.message_handler(commands=['fin'])
 def start(message):
+    add_or_update_api_user(chat_id=message.chat.id, first_name=message.chat.first_name,
+                           last_name=message.chat.last_name, username=message.chat.username)
     kb_start = Keyboa(items={
         'Начать работу': 'main_menu',
     }).keyboard
