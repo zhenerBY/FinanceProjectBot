@@ -1,3 +1,4 @@
+from dotenv import load_dotenv
 import os
 import re
 
@@ -5,10 +6,16 @@ import telebot
 from telebot import custom_filters, SimpleCustomFilter
 from keyboa import Keyboa
 
-from matplotlib_test.examples import *
-from request.request import *
+from BotAdditional import parser, act_EXP_INC
+from bot_matplotlib.matplotlib import get_balance_pie_chart, get_categories_type_pie_chart, get_category_pie_chart
+from request.request import get_categories, add_api_users, get_operations, del_operations, get_operation, \
+    add_categories, add_operations, partial_update_operations
 
-TOKEN = '5065010726:AAGDDYrw3cQVshBNBSqklLSTjgT2GauBBYM'
+load_dotenv()
+
+# !!!! Edit before deploy!!!!
+# BOT_TOKEN = os.getenv("BOT_TOKEN")
+BOT_TOKEN = '5065010726:AAGDDYrw3cQVshBNBSqklLSTjgT2GauBBYM'
 
 
 # Add Own custom filter
@@ -35,7 +42,7 @@ class OperationStates:
     amount = 13
 
 
-bot = telebot.TeleBot(TOKEN)
+bot = telebot.TeleBot(BOT_TOKEN)
 
 
 @bot.message_handler(commands=['start'])
@@ -83,12 +90,9 @@ def callback_inline(message):
     chat_id = message.message.chat.id
     message_id = message.message.id
     first_name = message.message.chat.first_name
-    data = message.data.split('=')[-1][:-1]
-    if data in ('INC', 'EXP'):
-        if data == 'INC':
-            act = 'доход'
-        else:
-            act = 'расход'
+    data = parser(message.data)
+    if data[1] in ('INC', 'EXP'):
+        act = act_EXP_INC(data[1])
         kb_show = Keyboa(items=[
             {f'📊 Диаграмма {act}ов': f'show_diagram'},
             {f'📄 Просмотреть {act}ы': f'show'},
@@ -107,7 +111,7 @@ def callback_inline(message):
         else:
             bot.delete_message(chat_id=chat_id, message_id=message_id)
             bot.send_message(chat_id=chat_id, reply_markup=kb_second, text='Выберите следующее действие')
-    if data == 'show_balance':
+    if data[1] == 'show_balance':
         kb_menu = Keyboa(items={
             '⬆ Вернуться в основное меню': 'main_menu'
         }).keyboard
@@ -123,8 +127,7 @@ def callback_inline(message):
     chat_id = message.message.chat.id
     message_id = message.message.id
     first_name = message.message.chat.first_name
-    data = message.data.split('=')[-1][:-1]
-    data2 = message.data.split('&')[1].removeprefix('st2=')
+    data = parser(message.data)
     items = []
     kb_previous = Keyboa(items={
         '⬅ Вернуться на шаг назад ': '&' + message.data.split('&')[-1]
@@ -132,12 +135,9 @@ def callback_inline(message):
     kb_menu = Keyboa(items={
         '⬆ Вернуться в основное меню': 'main_menu'
     }).keyboard
-    if data == 'INC':
-        act = 'доход'
-    else:
-        act = 'расход'
-    if data2 == 'add':
-        categories = get_categories(cat_type=data)
+    act = act_EXP_INC(data[1])
+    if data[2] == 'add':
+        categories = get_categories(cat_type=data[1])
         for element in categories:
             items.append({element['name']: element['id']})
         kb_cat = Keyboa(items=items, front_marker="&st3=", back_marker=message.data, items_in_row=3).keyboard
@@ -146,22 +146,22 @@ def callback_inline(message):
         kb_second = Keyboa.combine(keyboards=(kb_cat, kb_add, kb_previous, kb_menu))
         bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
                               text='Выберите категорию')
-    elif data2 == 'del':
-        operations = get_operations(chat_id, data)
+    elif data[2] == 'del':
+        operations = get_operations(chat_id, data[1])
         for element in operations:
             items.append({element['title']: element['id']})
         kb_cat = Keyboa(items=items, front_marker="&st3=", back_marker=message.data, items_in_row=2).keyboard
         kb_second = Keyboa.combine(keyboards=(kb_cat, kb_previous, kb_menu))
         bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
                               text='Что хотите удалить?')
-    elif data2 == 'show_diagram':
-        get_categories_type_pie_chart(user_id=chat_id, cat_type=data)
+    elif data[2] == 'show_diagram':
+        get_categories_type_pie_chart(user_id=chat_id, cat_type=data[1])
         bot.delete_message(chat_id=chat_id, message_id=message_id)
         bot.send_photo(chat_id=chat_id, photo=open(f'picts/{chat_id}_categories_type.png', 'rb'),
                        reply_markup=kb_previous,
                        caption=f'{first_name}, диаграмма Ваших {act}ов:')
         os.remove(f'picts/{chat_id}_categories_type.png')
-    elif data2 == 'show':
+    elif data[2] == 'show':
         kb_show = Keyboa(items=[
             {'Показать все': 'all'},
             {'Показать по категориям': 'cats'},
@@ -175,25 +175,19 @@ def callback_inline(message):
 def callback_inline(message):
     chat_id = message.message.chat.id
     message_id = message.message.id
-    first_name = message.message.chat.first_name
-    data = message.data.split('=')[-1][:-1]
-    data2 = message.data.split('&')[2].removeprefix('st2=')
-    data3 = message.data.split('&')[1].removeprefix('st3=')
+    data = parser(message.data)
     items = []
-    if data == 'INC':
-        act = 'доход'
-    else:
-        act = 'расход'
+    act = act_EXP_INC(data[1])
     kb_previous = Keyboa(items={
-        '⬅ Вернуться на шаг назад': f'&st2={data2}&st1={data}$'
+        '⬅ Вернуться на шаг назад': f'&st2={data[2]}&st1={data[1]}$'
     }).keyboard
     kb_menu = Keyboa(items={
         '⬆ Вернуться в основное меню': 'main_menu'
     }).keyboard
     # print(message.data)
-    if data2 == 'show':
-        if data3 == 'all':
-            operations = get_operations(chat_id, data)
+    if data[2] == 'show':
+        if data[3] == 'all':
+            operations = get_operations(chat_id, data[1])
             for element in operations:
                 items.append({element['title']: element['id']})
             kb_operations = Keyboa(items=items, front_marker="&st4=op", back_marker=message.data,
@@ -201,8 +195,8 @@ def callback_inline(message):
             kb_all = Keyboa.combine(keyboards=(kb_operations, kb_previous, kb_menu))
             bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
                                   text=f'Выберите {act} для детального отображения.')
-        if data3 == 'cats':
-            categories = get_categories(cat_type=data, chat_id=chat_id)
+        if data[3] == 'cats':
+            categories = get_categories(cat_type=data[1], chat_id=chat_id)
             for element in categories:
                 items.append({element['name']: element['id']})
             kb_cat = Keyboa(items=items, front_marker="&st4=ct", back_marker=message.data, items_in_row=3).keyboard
@@ -210,27 +204,27 @@ def callback_inline(message):
             bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
                                   text=f'Выберите категорию.')
 
-    if data2 == 'add':
-        if data3 == 'newcat':
+    if data[2] == 'add':
+        if data[3] == 'newcat':
             bot.set_state(chat_id, CategoryStates.name)
             with bot.retrieve_data(chat_id) as r_data:
                 bot.delete_message(chat_id=chat_id, message_id=message_id)
-                r_data['cat_type'] = data
+                r_data['cat_type'] = data[1]
                 r_data['backstep'] = '&' + message.data.split('&', maxsplit=2)[2]
             bot.send_message(chat_id=chat_id, text='Введите название категории\n(для отмены введите "/cancel")')
-        elif data3.isnumeric():
+        elif data[3].isnumeric():
             bot.set_state(chat_id, OperationStates.title)
             with bot.retrieve_data(chat_id) as r_data:
                 bot.delete_message(chat_id=chat_id, message_id=message_id)
-                r_data['category'] = data3
+                r_data['category'] = data[3]
                 r_data['chat_id'] = chat_id
                 r_data['backstep'] = '&' + message.data.split('&', maxsplit=3)[3]
                 r_data['operation'] = 'create'
             bot.send_message(chat_id=chat_id, text='Введите название операции\n(для отмены введите "/cancel")')
-    if data2 == 'del':
-        del_operations(id=data3)
+    if data[2] == 'del':
+        del_operations(id=data[3])
         kb_next = Keyboa(items={
-            'Продолжить ➡': f'&st2={data2}&st1={data}$'
+            'Продолжить ➡': f'&st2={data[2]}&st1={data[1]}$'
         }).keyboard
         bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_next,
                               text=f'Операция удалена.')
@@ -240,25 +234,18 @@ def callback_inline(message):
 def callback_inline(message):
     chat_id = message.message.chat.id
     message_id = message.message.id
-    first_name = message.message.chat.first_name
-    data = message.data.split('=')[-1][:-1]
-    data2 = message.data.split('&')[3].removeprefix('st2=')
-    data3 = message.data.split('&')[2].removeprefix('st3=')
-    data4 = message.data.split('&')[1].removeprefix('st4=')
+    data = parser(message.data)
     items = []
-    if data == 'INC':
-        act = 'доход'
-    else:
-        act = 'расход'
+    act = act_EXP_INC(data[1])
     kb_previous = Keyboa(items={
-        '⬅ Вернуться на шаг назад': f'&st3={data3}&st2={data2}&st1={data}$'
+        '⬅ Вернуться на шаг назад': f'&st3={data[3]}&st2={data[2]}&st1={data[1]}$'
     }).keyboard
     kb_menu = Keyboa(items={
         '⬆ Вернуться в основное меню': 'main_menu'
     }).keyboard
-    if data2 == 'show':
-        if data4[:2] == 'op':
-            operation = get_operation(chat_id, data4[2:])
+    if data[2] == 'show':
+        if data[4][:2] == 'op':
+            operation = get_operation(chat_id, data[4][2:])
             text = f'Название: {operation["title"]}\nОписание: {operation["description"]}\n' \
                    f'Сумма: {operation["amount"]}\n' \
                    f'Категория: {operation["category"]["name"]}\nСоздано: {operation["created_at"]}'
@@ -267,8 +254,8 @@ def callback_inline(message):
             kb_all = Keyboa.combine(keyboards=(kb_edit, kb_previous, kb_menu))
             bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
                                   text=text)
-        if data4[:2] == 'ct':
-            operations = get_operations(chat_id=chat_id, category=data4[2:])
+        if data[4][:2] == 'ct':
+            operations = get_operations(chat_id=chat_id, category=data[4][2:])
             for element in operations:
                 items.append({element['title']: element['id']})
             kb_operations = Keyboa(items=items, front_marker="&st5=", back_marker=message.data,
@@ -290,33 +277,24 @@ def callback_inline(message):
 def callback_inline(message):
     chat_id = message.message.chat.id
     message_id = message.message.id
-    first_name = message.message.chat.first_name
-    data = message.data.split('=')[-1][:-1]
-    data2 = message.data.split('&')[4].removeprefix('st2=')
-    data3 = message.data.split('&')[3].removeprefix('st3=')
-    data4 = message.data.split('&')[2].removeprefix('st4=')
-    data5 = message.data.split('&')[1].removeprefix('st5=')
+    data = parser(message.data)
     # print(message.data, data, data2, data3, data4, data5)
-    items = []
-    if data == 'INC':
-        act = 'доход'
-    else:
-        act = 'расход'
+    act = act_EXP_INC(data[1])
     kb_previous = Keyboa(items={
-        '⬅ Вернуться на шаг назад': f'&st4={data4}&st3={data3}&st2={data2}&st1={data}$'
+        '⬅ Вернуться на шаг назад': f'&st4={data[4]}&st3={data[3]}&st2={data[2]}&st1={data[1]}$'
     }).keyboard
     kb_menu = Keyboa(items={
         '⬆ Вернуться в основное меню': 'main_menu'
     }).keyboard
-    if data5 == 'diag':
-        get_category_pie_chart(chat_id=chat_id, category=data4[2:])
+    if data[5] == 'diag':
+        get_category_pie_chart(chat_id=chat_id, category=data[4][2:])
         bot.delete_message(chat_id=chat_id, message_id=message_id)
         bot.send_photo(chat_id=chat_id, photo=open(f'picts/{chat_id}_category.png', 'rb'),
                        reply_markup=kb_previous,
                        caption=f'Диаграмма {act}ов по категории:')
         os.remove(f'picts/{chat_id}_category.png')
-    elif data5.isdigit():
-        operation = get_operation(chat_id, data5)
+    elif data[5].isdigit():
+        operation = get_operation(chat_id, data[5])
         text = f'Название: {operation["title"]}\nОписание: {operation["description"]}\n' \
                f'Сумма: {operation["amount"]}\n' \
                f'Категория: {operation["category"]["name"]}\nСоздано: {operation["created_at"]}'
@@ -325,14 +303,14 @@ def callback_inline(message):
         kb_all = Keyboa.combine(keyboards=(kb_edit, kb_previous, kb_menu))
         bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
                               text=text)
-    elif data5 == 'edit':
+    elif data[5] == 'edit':
         bot.set_state(chat_id, OperationStates.title)
         with bot.retrieve_data(chat_id) as r_data:
             bot.delete_message(chat_id=chat_id, message_id=message_id)
-            r_data['id'] = data4[2:]
+            r_data['id'] = data[4][2:]
             r_data['chat_id'] = chat_id
-            r_data['backstep'] = '&st4=' + data4 + '&st3=' + data3 + \
-                                 '&st2=' + data2 + '&st1=' + data + '$'
+            r_data['backstep'] = '&st4=' + data[4] + '&st3=' + data[3] + \
+                                 '&st2=' + data[2] + '&st1=' + data[1] + '$'
             r_data['operation'] = 'change'
         bot.send_message(chat_id=chat_id, text='Введите название операции\n(для отмены введите "/cancel")')
         pass
@@ -342,23 +320,17 @@ def callback_inline(message):
 def callback_inline(message):
     chat_id = message.message.chat.id
     message_id = message.message.id
-    first_name = message.message.chat.first_name
-    data = message.data.split('=')[-1][:-1]
-    data2 = message.data.split('&')[5].removeprefix('st2=')
-    data3 = message.data.split('&')[4].removeprefix('st3=')
-    data4 = message.data.split('&')[3].removeprefix('st4=')
-    data5 = message.data.split('&')[2].removeprefix('st5=')
-    data6 = message.data.split('&')[1].removeprefix('st6=')
+    data = parser(message.data)
     # print(message.data, data, data2, data3, data4, data5, data6)
-    if data6 == 'edit':
+    if data[6] == 'edit':
         bot.set_state(chat_id, OperationStates.title)
         with bot.retrieve_data(chat_id) as r_data:
             bot.delete_message(chat_id=chat_id, message_id=message_id)
-            r_data['id'] = data5
+            r_data['id'] = data[5]
             r_data['chat_id'] = chat_id
-            r_data['category'] = data4[2:]
-            r_data['backstep'] = '&st5=' + data5 + '&st4=' + data4 + '&st3=' + data3 + \
-                                 '&st2=' + data2 + '&st1=' + data + '$'
+            r_data['category'] = data[4][2:]
+            r_data['backstep'] = '&st5=' + data[5] + '&st4=' + data[4] + '&st3=' + data[3] + \
+                                 '&st2=' + data[2] + '&st1=' + data[1] + '$'
             r_data['operation'] = 'change'
         bot.send_message(chat_id=chat_id, text='Введите название операции\n(для отмены введите "/cancel")')
 
@@ -445,7 +417,6 @@ def echo_all(message):
 
 
 bot.add_custom_filter(custom_filters.StateFilter(bot))
-bot.add_custom_filter(custom_filters.IsDigitFilter())
 bot.add_custom_filter(IsFloatFilter())
 
 # # set saving states into file.
