@@ -1,5 +1,8 @@
+from dotenv import load_dotenv
 import requests
 import json
+
+load_dotenv()
 
 HOST_API = 'http://127.0.0.1:8000/api/'
 chat_id = 134203883
@@ -7,7 +10,11 @@ TOKEN = '994f61ba4bd900112ae616ef66c09fe086576b2e'
 APIKEY = 'J8W5JPDw.6zXqClii0tX5pH7e0byYo9bQHjUHuVoz'
 
 
-# Примеры работы для бота (без авторизации)
+# !!!! Edit before deploy!!!!
+# HOST_API = os.getenv("HOST_API")
+# APIKEY = os.getenv("APIKEY")
+
+# Примеры работы для бота
 
 # С аргументов выводит только текущего пользователя, без - всех
 def get_api_users_list(chat_id: int = None) -> list:

@@ -8,16 +8,15 @@ from keyboa import Keyboa
 
 from BotAdditional import parser, act_EXP_INC
 from bot_matplotlib.matplotlib import get_balance_pie_chart, get_categories_type_pie_chart, get_category_pie_chart
-from request.request import get_categories, add_api_users, get_operations, del_operations, get_operation, \
-    add_categories, add_operations, partial_update_operations, partial_update_api_users, get_api_users_list, \
-    add_or_update_api_user
+from bot_request.request import get_categories, get_operations, del_operations, get_operation, add_categories, \
+    add_operations, partial_update_operations, add_or_update_api_user
 
 load_dotenv()
 
 # !!!! Edit before deploy!!!!
 # BOT_TOKEN = os.getenv("BOT_TOKEN")
-BOT_TOKEN = '5065010726:AAGDDYrw3cQVshBNBSqklLSTjgT2GauBBYM'
 
+BOT_TOKEN = '5065010726:AAGDDYrw3cQVshBNBSqklLSTjgT2GauBBYM'
 
 # Add Own custom filter
 class IsFloatFilter(SimpleCustomFilter):
@@ -282,7 +281,6 @@ def callback_inline(message):
     chat_id = message.message.chat.id
     message_id = message.message.id
     data = parser(message.data)
-    # print(message.data, data, data2, data3, data4, data5)
     act = act_EXP_INC(data[1])
     kb_previous = Keyboa(items={
         '⬅ Вернуться на шаг назад': f'&st4={data[4]}&st3={data[3]}&st2={data[2]}&st1={data[1]}$'
@@ -325,7 +323,6 @@ def callback_inline(message):
     chat_id = message.message.chat.id
     message_id = message.message.id
     data = parser(message.data)
-    # print(message.data, data, data2, data3, data4, data5, data6)
     if data[6] == 'edit':
         bot.set_state(chat_id, OperationStates.title)
         with bot.retrieve_data(chat_id) as r_data:

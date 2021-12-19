@@ -1,7 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
-from request.request import get_balance, get_categories_balance, get_operations
+from bot_request.request import get_balance, get_categories_balance, get_operations
 
 CHAT_ID = 11111111
 
