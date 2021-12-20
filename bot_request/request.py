@@ -196,14 +196,15 @@ def del_operations(id: int) -> dict:
 
 
 # Set the value 'INC'|'EXP' for separated list
-def get_categories(cat_type: str = None, chat_id: int = None) -> list:
+def get_categories(cat_type: str = None, chat_id: int = None, unused: bool = False) -> list:
     headers = {
         'Authorization': 'Api-Key ' + APIKEY,
     }
     if chat_id is None:
         users_data = requests.get(HOST_API + 'categories/', headers=headers)
     else:
-        users_data = requests.get(HOST_API + 'categories/', headers=headers, json={'chat_id': chat_id})
+        users_data = requests.get(HOST_API + 'categories/', headers=headers,
+                                  json={'chat_id': chat_id, 'unused': unused})
     json_users_data = users_data.json()
     if cat_type is None:
         json_users_data = json_users_data

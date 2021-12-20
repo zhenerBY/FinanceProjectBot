@@ -105,10 +105,13 @@ def callback_inline(message):
             {f'➕ Добавить {act}': 'add'},
             {f'❌ Удалить {act}': 'del'},
         ], front_marker="&st2=", back_marker=message.data, items_in_row=2).keyboard
+        kb_cat = Keyboa(items=[
+            {f'🗂 Категории {act}ов': 'cat'},
+        ], front_marker="&st2=", back_marker=message.data, items_in_row=1).keyboard
         kb_menu = Keyboa(items={
             '⬆ Вернуться в основное меню': 'main_menu'
         }).keyboard
-        kb_second = Keyboa.combine(keyboards=(kb_show, kb_act, kb_menu))
+        kb_second = Keyboa.combine(keyboards=(kb_show, kb_act, kb_cat, kb_menu))
         if message.message.text is not None:
             bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
                                   text='Выберите следующее действие')
@@ -185,13 +188,26 @@ def callback_inline(message):
             bot.edit_message_text(text='Нет данных для формирования диаграммы', chat_id=chat_id,
                                   message_id=message_id,
                                   reply_markup=kb_menu)
-
     elif data[2] == 'show':
         kb_show = Keyboa(items=[
             {'Показать все': 'all'},
             {'Показать по категориям': 'cats'},
         ], front_marker="&st3=", back_marker=message.data, items_in_row=2).keyboard
         kb_second = Keyboa.combine(keyboards=(kb_show, kb_previous, kb_menu))
+        bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
+                              text=f'Выберите необходимый вариант')
+    elif data[2] == 'cat':
+        kb_cat_all = Keyboa(items=[
+            {'🗂 Показать все категории': 'all'},
+        ], front_marker="&st3=", back_marker=message.data, items_in_row=2).keyboard
+        kb_cat = Keyboa(items=[
+            {'📂 Используемые категории': 'used'},
+            {'📁 Неиспользуемые категории': 'unused'},
+        ], front_marker="&st3=", back_marker=message.data, items_in_row=2).keyboard
+        kb_del = Keyboa(items=[
+            {'❌ Удалить неиспользуемые категории': 'del'},
+        ], front_marker="&st3=", back_marker=message.data, items_in_row=2).keyboard
+        kb_second = Keyboa.combine(keyboards=(kb_cat_all, kb_cat, kb_del, kb_previous, kb_menu))
         bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
                               text=f'Выберите необходимый вариант')
 
@@ -236,8 +252,7 @@ def callback_inline(message):
             kb_all = Keyboa.combine(keyboards=(kb_cat, kb_previous, kb_menu))
             bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
                                   text=f'Выберите категорию.')
-
-    if data[2] == 'add':
+    elif data[2] == 'add':
         if data[3] == 'newcat':
             bot.set_state(chat_id, CategoryStates.name)
             with bot.retrieve_data(chat_id) as r_data:
@@ -254,13 +269,22 @@ def callback_inline(message):
                 r_data['backstep'] = '&' + message.data.split('&', maxsplit=3)[3]
                 r_data['operation'] = 'create'
             bot.send_message(chat_id=chat_id, text='Введите название операции\n(для отмены введите "/cancel")')
-    if data[2] == 'del':
+    elif data[2] == 'del':
         del_operations(id=data[3])
         kb_next = Keyboa(items={
             'Продолжить ➡': f'&st2={data[2]}&st1={data[1]}$'
         }).keyboard
         bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_next,
                               text=f'Операция удалена.')
+    elif data[2] == 'cat':
+        if data[3] == 'all':
+            print('all')
+        elif data[3] == 'used':
+            print('used')
+        elif data[3] == 'unused':
+            print('unused')
+        elif data[3] == 'del':
+            print('del')
 
 
 @bot.callback_query_handler(func=lambda call: re.match(r'^&st4=', call.data))
