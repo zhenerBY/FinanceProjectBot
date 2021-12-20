@@ -33,7 +33,7 @@ def act_EXP_INC(text: str) -> str:
 def check_existence(chat_id:int, cat_type: str = None) -> bool:
     if cat_type is None:
         responseINC = get_operations(chat_id=chat_id, cat_type='INC')
-        responseEXP = get_operations(chat_id=chat_id, cat_type='INC')
+        responseEXP = get_operations(chat_id=chat_id, cat_type='EXP')
         if responseINC == [] or responseEXP == []:
             return False
         return True
