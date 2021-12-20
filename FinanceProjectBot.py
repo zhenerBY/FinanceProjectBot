@@ -6,7 +6,7 @@ import telebot
 from telebot import custom_filters, SimpleCustomFilter
 from keyboa import Keyboa
 
-from BotAdditional import parser, act_EXP_INC
+from BotAdditional import parser, act_EXP_INC, check_existence
 from bot_matplotlib.matplotlib import get_balance_pie_chart, get_categories_type_pie_chart, get_category_pie_chart
 from bot_request.request import get_categories, get_operations, del_operations, get_operation, add_categories, \
     add_operations, partial_update_operations, add_or_update_api_user
@@ -119,11 +119,15 @@ def callback_inline(message):
         kb_menu = Keyboa(items={
             '⬆ Вернуться в основное меню': 'main_menu'
         }).keyboard
-        get_balance_pie_chart(user_id=chat_id)
-        bot.delete_message(chat_id=chat_id, message_id=message_id)
-        bot.send_photo(chat_id=chat_id, photo=open(f'picts/{chat_id}_balance.png', 'rb'), reply_markup=kb_menu,
-                       caption=f'{first_name}, баланс Ваших расходов и доходов:')
-        os.remove(f'picts/{chat_id}_balance.png')
+        if check_existence(chat_id=chat_id):
+            get_balance_pie_chart(user_id=chat_id)
+            bot.delete_message(chat_id=chat_id, message_id=message_id)
+            bot.send_photo(chat_id=chat_id, photo=open(f'picts/{chat_id}_balance.png', 'rb'), reply_markup=kb_menu,
+                           caption=f'{first_name}, баланс Ваших расходов и доходов:')
+            os.remove(f'picts/{chat_id}_balance.png')
+        else:
+            bot.edit_message_text(text='Нет данных для формирования диаграммы', chat_id=chat_id, message_id=message_id,
+                                  reply_markup=kb_menu)
 
 
 @bot.callback_query_handler(func=lambda call: re.match(r'^&st2=', call.data))
@@ -167,12 +171,21 @@ def callback_inline(message):
         bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
                               text='Что хотите удалить?')
     elif data[2] == 'show_diagram':
-        get_categories_type_pie_chart(user_id=chat_id, cat_type=data[1])
-        bot.delete_message(chat_id=chat_id, message_id=message_id)
-        bot.send_photo(chat_id=chat_id, photo=open(f'picts/{chat_id}_categories_type.png', 'rb'),
-                       reply_markup=kb_previous,
-                       caption=f'{first_name}, диаграмма Ваших {act}ов:')
-        os.remove(f'picts/{chat_id}_categories_type.png')
+        if check_existence(chat_id=chat_id, cat_type=data[1]):
+            get_categories_type_pie_chart(user_id=chat_id, cat_type=data[1])
+            bot.delete_message(chat_id=chat_id, message_id=message_id)
+            bot.send_photo(chat_id=chat_id, photo=open(f'picts/{chat_id}_categories_type.png', 'rb'),
+                           reply_markup=kb_previous,
+                           caption=f'{first_name}, диаграмма Ваших {act}ов:')
+            os.remove(f'picts/{chat_id}_categories_type.png')
+        else:
+            kb_menu = Keyboa(items={
+                '⬆ Вернуться в основное меню': 'main_menu'
+            }).keyboard
+            bot.edit_message_text(text='Нет данных для формирования диаграммы', chat_id=chat_id,
+                                  message_id=message_id,
+                                  reply_markup=kb_menu)
+
     elif data[2] == 'show':
         kb_show = Keyboa(items=[
             {'Показать все': 'all'},

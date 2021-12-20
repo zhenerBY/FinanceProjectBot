@@ -1,3 +1,5 @@
+from bot_request.request import get_operations
+
 text = '&st6=edit&st5=61&st4=ct16&st3=cats&st2=show&st1=INC$'
 
 
@@ -28,4 +30,19 @@ def act_EXP_INC(text: str) -> str:
         return 'расход'
 
 
-parser(text)
+def check_existence(chat_id:int, cat_type: str = None) -> bool:
+    if cat_type is None:
+        responseINC = get_operations(chat_id=chat_id, cat_type='INC')
+        responseEXP = get_operations(chat_id=chat_id, cat_type='INC')
+        if responseINC == [] or responseEXP == []:
+            return False
+        return True
+    else:
+        response = get_operations(chat_id=chat_id, cat_type=cat_type)
+        if response == []:
+            return False
+        return True
+
+
+
+# parser(text)
