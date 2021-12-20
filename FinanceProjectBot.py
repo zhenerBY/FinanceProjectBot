@@ -18,6 +18,7 @@ load_dotenv()
 
 BOT_TOKEN = '5065010726:AAGDDYrw3cQVshBNBSqklLSTjgT2GauBBYM'
 
+
 # Add Own custom filter
 class IsFloatFilter(SimpleCustomFilter):
     key = 'is_float'
@@ -141,9 +142,13 @@ def callback_inline(message):
     act = act_EXP_INC(data[1])
     if data[2] == 'add':
         categories = get_categories(cat_type=data[1])
-        for element in categories:
-            items.append({element['name']: element['id']})
-        kb_cat = Keyboa(items=items, front_marker="&st3=", back_marker=message.data, items_in_row=3).keyboard
+        if categories != []:
+            for element in categories:
+                items.append({element['name']: element['id']})
+            kb_cat = Keyboa(items=items, front_marker="&st3=", back_marker=message.data, items_in_row=3).keyboard
+        else:
+            items.append({f'🚫 нет категорий для отображения 🚫': 1})
+            kb_cat = Keyboa(items=items, items_in_row=1).keyboard
         kb_add = Keyboa(items=[{'➕ Добавить категорию': 'newcat'}], front_marker="&st3=", back_marker=message.data,
                         items_in_row=3).keyboard
         kb_second = Keyboa.combine(keyboards=(kb_cat, kb_add, kb_previous, kb_menu))
@@ -151,9 +156,13 @@ def callback_inline(message):
                               text='Выберите категорию')
     elif data[2] == 'del':
         operations = get_operations(chat_id, data[1])
-        for element in operations:
-            items.append({element['title']: element['id']})
-        kb_cat = Keyboa(items=items, front_marker="&st3=", back_marker=message.data, items_in_row=2).keyboard
+        if operations != []:
+            for element in operations:
+                items.append({element['title']: element['id']})
+            kb_cat = Keyboa(items=items, front_marker="&st3=", back_marker=message.data, items_in_row=2).keyboard
+        else:
+            items.append({f'🚫 нет {act}ов для отображения 🚫': 1})
+            kb_cat = Keyboa(items=items, items_in_row=1).keyboard
         kb_second = Keyboa.combine(keyboards=(kb_cat, kb_previous, kb_menu))
         bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
                               text='Что хотите удалить?')
@@ -191,18 +200,26 @@ def callback_inline(message):
     if data[2] == 'show':
         if data[3] == 'all':
             operations = get_operations(chat_id, data[1])
-            for element in operations:
-                items.append({element['title']: element['id']})
-            kb_operations = Keyboa(items=items, front_marker="&st4=op", back_marker=message.data,
-                                   items_in_row=2).keyboard
+            if operations != []:
+                for element in operations:
+                    items.append({element['title']: element['id']})
+                kb_operations = Keyboa(items=items, front_marker="&st4=op", back_marker=message.data,
+                                       items_in_row=2).keyboard
+            else:
+                items.append({f'🚫 нет {act}ов для отображения 🚫': 1})
+                kb_operations = Keyboa(items=items, items_in_row=1).keyboard
             kb_all = Keyboa.combine(keyboards=(kb_operations, kb_previous, kb_menu))
             bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
                                   text=f'Выберите {act} для детального отображения.')
         if data[3] == 'cats':
             categories = get_categories(cat_type=data[1], chat_id=chat_id)
-            for element in categories:
-                items.append({element['name']: element['id']})
-            kb_cat = Keyboa(items=items, front_marker="&st4=ct", back_marker=message.data, items_in_row=3).keyboard
+            if categories != []:
+                for element in categories:
+                    items.append({element['name']: element['id']})
+                kb_cat = Keyboa(items=items, front_marker="&st4=ct", back_marker=message.data, items_in_row=3).keyboard
+            else:
+                items.append({f'🚫 нет категорий для отображения 🚫': 1})
+                kb_cat = Keyboa(items=items, items_in_row=1).keyboard
             kb_all = Keyboa.combine(keyboards=(kb_cat, kb_previous, kb_menu))
             bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
                                   text=f'Выберите категорию.')
