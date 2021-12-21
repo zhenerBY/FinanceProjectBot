@@ -187,7 +187,7 @@ def callback_inline(message):
             }).keyboard
             bot.edit_message_text(text='Нет данных для формирования диаграммы', chat_id=chat_id,
                                   message_id=message_id,
-                                  reply_markup=kb_menu)
+                                  reply_markup=kb_previous)
     elif data[2] == 'show':
         kb_show = Keyboa(items=[
             {'Показать все': 'all'},
