@@ -9,7 +9,7 @@ from keyboa import Keyboa
 from BotAdditional import parser, act_EXP_INC, check_existence
 from bot_matplotlib.matplotlib import get_balance_pie_chart, get_categories_type_pie_chart, get_category_pie_chart
 from bot_request.request import get_categories, get_operations, del_operations, get_operation, add_categories, \
-    add_operations, partial_update_operations, add_or_update_api_user
+    add_operations, partial_update_operations, add_or_update_api_user, del_categories
 
 load_dotenv()
 
@@ -182,9 +182,6 @@ def callback_inline(message):
                            caption=f'{first_name}, диаграмма Ваших {act}ов:')
             os.remove(f'picts/{chat_id}_categories_type.png')
         else:
-            kb_menu = Keyboa(items={
-                '⬆ Вернуться в основное меню': 'main_menu'
-            }).keyboard
             bot.edit_message_text(text='Нет данных для формирования диаграммы', chat_id=chat_id,
                                   message_id=message_id,
                                   reply_markup=kb_previous)
@@ -198,7 +195,7 @@ def callback_inline(message):
                               text=f'Выберите необходимый вариант')
     elif data[2] == 'cat':
         kb_cat_all = Keyboa(items=[
-            {'🗂 Показать все категории': 'all'},
+            {'🗂 Показать все доступные категории': 'all'},
         ], front_marker="&st3=", back_marker=message.data, items_in_row=2).keyboard
         kb_cat = Keyboa(items=[
             {'📂 Используемые категории': 'used'},
@@ -278,13 +275,53 @@ def callback_inline(message):
                               text=f'Операция удалена.')
     elif data[2] == 'cat':
         if data[3] == 'all':
-            print('all')
+            categories = get_categories(cat_type=data[1])
+            if categories != []:
+                for element in categories:
+                    items.append({element['name']: element['id']})
+                kb_cat = Keyboa(items=items, front_marker="&st4=", back_marker=message.data, items_in_row=3).keyboard
+            else:
+                items.append({f'🚫 нет категорий для отображения 🚫': 1})
+                kb_cat = Keyboa(items=items, items_in_row=1).keyboard
+            kb_all = Keyboa.combine(keyboards=(kb_cat, kb_previous, kb_menu))
+            bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
+                                  text=f'Список доступных категорий {act}ов:')
         elif data[3] == 'used':
-            print('used')
+            categories = get_categories(cat_type=data[1], chat_id=chat_id)
+            if categories != []:
+                for element in categories:
+                    items.append({element['name']: element['id']})
+                kb_cat = Keyboa(items=items, front_marker="&st4=", back_marker=message.data, items_in_row=3).keyboard
+            else:
+                items.append({f'🚫 нет категорий для отображения 🚫': 1})
+                kb_cat = Keyboa(items=items, items_in_row=1).keyboard
+            kb_all = Keyboa.combine(keyboards=(kb_cat, kb_previous, kb_menu))
+            bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
+                                  text=f'Список используемых категорий {act}ов:')
         elif data[3] == 'unused':
-            print('unused')
+            categories = get_categories(cat_type=data[1], chat_id=chat_id, unused=True)
+            if categories != []:
+                for element in categories:
+                    items.append({element['name']: element['id']})
+                kb_cat = Keyboa(items=items, front_marker="&st4=", back_marker=message.data, items_in_row=3).keyboard
+            else:
+                items.append({f'🚫 нет категорий для отображения 🚫': 1})
+                kb_cat = Keyboa(items=items, items_in_row=1).keyboard
+            kb_all = Keyboa.combine(keyboards=(kb_cat, kb_previous, kb_menu))
+            bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
+                                  text=f'Список неиспользуемых категорий {act}ов:')
         elif data[3] == 'del':
-            print('del')
+            categories = get_categories(cat_type=data[1], chat_id=chat_id, unused=True)
+            if categories != []:
+                for element in categories:
+                    items.append({element['name']: element['id']})
+                kb_cat = Keyboa(items=items, front_marker="&st4=del", back_marker=message.data, items_in_row=3).keyboard
+            else:
+                items.append({f'🚫 нет категорий для отображения 🚫': 1})
+                kb_cat = Keyboa(items=items, items_in_row=1).keyboard
+            kb_all = Keyboa.combine(keyboards=(kb_cat, kb_previous, kb_menu))
+            bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
+                                  text=f'Выберите категорию для удаления:')
 
 
 @bot.callback_query_handler(func=lambda call: re.match(r'^&st4=', call.data))
@@ -328,6 +365,12 @@ def callback_inline(message):
                 bot.delete_message(chat_id=chat_id, message_id=message_id)
                 bot.send_message(chat_id=chat_id, reply_markup=kb_all,
                                  text=f'Выберите {act} для детального отображения.')
+    elif data[2] == 'cat':
+        if data[3] == 'del':
+            id_cat_del = data[4][3:]
+            del_categories(id_cat_del)
+            bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_previous,
+                                  text=f'Категория удалена.')
 
 
 @bot.callback_query_handler(func=lambda call: re.match(r'^&st5=', call.data))
