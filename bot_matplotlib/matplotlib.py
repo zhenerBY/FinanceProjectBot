@@ -24,6 +24,7 @@ def get_balance_pie_chart(user_id: int):
     # safe file
     plt.savefig(f'picts/{user_id}_balance.png', transparent=True)
     # plt.show()
+    plt.close('all')
 
 
 def get_categories_type_pie_chart(user_id: int, cat_type: str):
@@ -42,6 +43,7 @@ def get_categories_type_pie_chart(user_id: int, cat_type: str):
     # safe file
     plt.savefig(f'picts/{user_id}_categories_type.png', transparent=True)
     # plt.show()
+    plt.close('all')
 
 
 def get_category_pie_chart(chat_id: int, category: int):
@@ -60,3 +62,4 @@ def get_category_pie_chart(chat_id: int, category: int):
     # safe file
     plt.savefig(f'picts/{chat_id}_category.png', transparent=True)
     # plt.show()
+    plt.close('all')
