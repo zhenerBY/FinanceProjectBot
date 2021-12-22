@@ -196,35 +196,34 @@ def del_operations(id: int) -> dict:
 
 
 # Set the value 'INC'|'EXP' for separated list
-def get_categories(cat_type: str = None, chat_id: int = None, unused: bool = False) -> list:
-
+def get_categories(cat_type: str = None, chat_id: int = None, unused: bool = None) -> list:
     headers = {
         'Authorization': 'Api-Key ' + APIKEY,
     }
-    if chat_id is None:
-        users_data = requests.get(HOST_API + 'categories/', headers=headers)
-    else:
-        users_data = requests.get(HOST_API + 'categories/', headers=headers,
-                                  json={'chat_id': chat_id, 'unused': unused})
+    data = {}
+    if chat_id is not None:
+        data['chat_id'] = chat_id
+    if cat_type is not None:
+        data['cat_type'] = cat_type
+    if unused is not None:
+        if unused is False:
+            data['unused'] = False
+        else:
+            data['unused'] = True
+    users_data = requests.get(HOST_API + 'categories/', headers=headers,
+                              json=data)
     json_users_data = users_data.json()
-    if cat_type is None:
-        json_users_data = json_users_data
-    else:
-        tmp = []
-        for item in json_users_data:
-            if item['cat_type'] == cat_type:
-                tmp.append(item)
-        json_users_data = tmp
     return json_users_data
 
 
-def add_categories(name: str, cat_type: str = 'EXP') -> dict:
+def add_categories(name: str, cat_type: str, chat_id: int) -> dict:
     headers = {
         'Authorization': 'Api-Key ' + APIKEY,
     }
     data = {
         'name': name,
         'cat_type': cat_type,
+        'chat_id': chat_id,
     }
     users_data = requests.post(HOST_API + 'categories/', json=data, headers=headers)
     json_users_data = users_data.json()
@@ -236,7 +235,6 @@ def del_categories(id: int) -> int:
         'Authorization': 'Api-Key ' + APIKEY,
     }
     users_data = requests.delete(HOST_API + 'categories/' + str(id) + '/', headers=headers)
-    # json_users_data = users_data.json()
     return users_data.status_code
 
 
