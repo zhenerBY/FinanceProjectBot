@@ -148,7 +148,7 @@ def callback_inline(message):
     }).keyboard
     act = act_EXP_INC(data[1])
     if data[2] == 'add':
-        categories = get_categories(cat_type=data[1])
+        categories = get_categories(cat_type=data[1], chat_id=chat_id)
         if categories != []:
             for element in categories:
                 items.append({element['name']: element['id']})
@@ -238,7 +238,7 @@ def callback_inline(message):
             bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
                                   text=f'Выберите {act} для детального отображения.')
         if data[3] == 'cats':
-            categories = get_categories(cat_type=data[1], chat_id=chat_id)
+            categories = get_categories(cat_type=data[1], chat_id=chat_id, unused=False)
             if categories != []:
                 for element in categories:
                     items.append({element['name']: element['id']})
@@ -275,7 +275,7 @@ def callback_inline(message):
                               text=f'Операция удалена.')
     elif data[2] == 'cat':
         if data[3] == 'all':
-            categories = get_categories(cat_type=data[1])
+            categories = get_categories(cat_type=data[1], chat_id=chat_id)
             if categories != []:
                 for element in categories:
                     items.append({element['name']: element['id']})
@@ -287,7 +287,7 @@ def callback_inline(message):
             bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
                                   text=f'Список доступных категорий {act}ов:')
         elif data[3] == 'used':
-            categories = get_categories(cat_type=data[1], chat_id=chat_id)
+            categories = get_categories(cat_type=data[1], chat_id=chat_id, unused=False)
             if categories != []:
                 for element in categories:
                     items.append({element['name']: element['id']})
@@ -453,7 +453,7 @@ def category_name_get(message):
     with bot.retrieve_data(message.from_user.id) as data:
         data['name'] = message.text
         backstep = data['backstep']
-        add_categories(name=message.text, cat_type=data['cat_type'])
+        add_categories(name=message.text, cat_type=data['cat_type'], chat_id=message.chat.id)
     kb_next = Keyboa(items={
         'Продолжить ➡': backstep
     }).keyboard
