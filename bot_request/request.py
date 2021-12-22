@@ -197,6 +197,7 @@ def del_operations(id: int) -> dict:
 
 # Set the value 'INC'|'EXP' for separated list
 def get_categories(cat_type: str = None, chat_id: int = None, unused: bool = False) -> list:
+
     headers = {
         'Authorization': 'Api-Key ' + APIKEY,
     }
