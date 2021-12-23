@@ -1,3 +1,5 @@
+from datetime import datetime, date, timedelta
+from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 import os
 import re
@@ -17,6 +19,18 @@ load_dotenv()
 # BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 BOT_TOKEN = '5065010726:AAGDDYrw3cQVshBNBSqklLSTjgT2GauBBYM'
+
+bot = telebot.TeleBot(BOT_TOKEN)
+
+# 4 additional user's data
+user_dict = {}
+
+
+# 4 additional user's data
+class User():
+    def __init__(self):
+        # self.date_filter = None
+        self.date_filter = datetime.now().date()
 
 
 # Add Own custom filter
@@ -43,15 +57,13 @@ class OperationStates:
     amount = 13
 
 
-bot = telebot.TeleBot(BOT_TOKEN)
-
-
 @bot.message_handler(commands=['start'])
 def send_welcome(message):
     add_or_update_api_user(chat_id=message.chat.id, first_name=message.chat.first_name,
                            last_name=message.chat.last_name, username=message.chat.username)
     bot.send_message(chat_id=message.chat.id, text=f'Hello {message.chat.first_name}!\n'
-                                                   f'Для начала работы введите "/fin"')
+                                                   f'Для начала работы введите "/fin"\n'
+                                                   f'Для указания периода ведите "/per"')
 
 
 @bot.message_handler(commands=['help'])
@@ -67,6 +79,93 @@ def start(message):
         'Начать работу': 'main_menu',
     }).keyboard
     bot.send_message(chat_id=message.chat.id, reply_markup=kb_start, text=f'{message.chat.first_name}, начнем работу?')
+
+
+@bot.message_handler(commands=['per'])
+def start(message):
+    add_or_update_api_user(chat_id=message.chat.id, first_name=message.chat.first_name,
+                           last_name=message.chat.last_name, username=message.chat.username)
+    kb_start = Keyboa(items={
+        'Далее': 'period',
+    }).keyboard
+    bot.send_message(chat_id=message.chat.id, reply_markup=kb_start,
+                     text=f'{message.chat.first_name}, для указание периода\n'
+                          f'отображения операций нажмите далее.')
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'period')
+def reset_period(message):
+    chat_id = message.message.chat.id
+    message_id = message.message.id
+    first_name = message.message.chat.first_name
+    date_filter = 'не установлен.\nОтображаются все операции.'
+    if chat_id not in user_dict.keys():
+        user_dict[chat_id] = User()
+    if user_dict[chat_id].date_filter is not None:
+        date_filter = f'\n' \
+                      f'с  - {user_dict[chat_id].date_filter.strftime("%d %B %Y")}\n' \
+                      f'по - {datetime.now().date().strftime("%d %B %Y")}'
+    kb_start = Keyboa(items=[
+        {'✅ Установить период': 'set_period'},
+        {'✳ Сбросить период': 'reset_period'},
+        {'❎ Закрыть': 'close_period'},
+    ]).keyboard
+    bot.edit_message_text(chat_id=chat_id, reply_markup=kb_start, message_id=message_id,
+                          text=f'Текущий период: {date_filter}')
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'reset_period')
+def reset_period(message):
+    chat_id = message.message.chat.id
+    message_id = message.message.id
+    user_dict[chat_id].date_filter = None
+    bot.edit_message_text(chat_id=chat_id, message_id=message_id,
+                          text=f'Период сброшен. Отображаются все операции.\n'
+                               f'Для продолжения введите "/fin"')
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'set_period')
+def set_period(message):
+    chat_id = message.message.chat.id
+    message_id = message.message.id
+    kb_previous = Keyboa(items={
+        '⬅ Вернуться на шаг назад ': 'period'
+    }).keyboard
+    kb_per = Keyboa(items=[
+        {'Неделя': 'we'},
+        {'Месяц': 'mo'},
+        {'Пол года': 'hy'},
+        {'Год': 'ye'},
+        {'Указать произвольную дату': 'xx'},
+    ], front_marker="&pr1=", back_marker="$", items_in_row=2).keyboard
+    kb_all = Keyboa.combine(keyboards=(kb_per, kb_previous))
+    bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
+                          text=f'Выберите период')
+
+
+@bot.callback_query_handler(func=lambda call: call.data == 'close_period')
+def set_period(message):
+    chat_id = message.message.chat.id
+    message_id = message.message.id
+    bot.delete_message(chat_id=chat_id, message_id=message_id)
+
+
+@bot.callback_query_handler(func=lambda call: re.match(r'^&pr1=', call.data))
+def callback_inline(message):
+    chat_id = message.message.chat.id
+    message_id = message.message.id
+    first_name = message.message.chat.first_name
+    data = parser(message.data)
+    if data[1] == 'we':
+        user_dict[chat_id].date_filter = datetime.now().date() - relativedelta(weeks=1)
+    elif data[1] == 'mo':
+        user_dict[chat_id].date_filter = datetime.now().date() - relativedelta(months=2)
+    elif data[1] == 'hy':
+        user_dict[chat_id].date_filter = datetime.now().date() - relativedelta(months=6)
+    elif data[1] == 'ye':
+        user_dict[chat_id].date_filter = datetime.now().date() - relativedelta(years=1)
+    if data[1] == 'xx':
+        print('xx')
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'main_menu')
