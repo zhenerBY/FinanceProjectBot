@@ -54,7 +54,7 @@ class IsCorrectDateFilter(SimpleCustomFilter):
             text_date = datetime.strptime(message.text, '%d-%m-%Y').date()
         except ValueError:
             return False
-        if datetime.now().date() < text_date:
+        if datetime.now().date() <= text_date:
             return False
         return True
 
