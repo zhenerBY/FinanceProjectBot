@@ -32,11 +32,15 @@ def get_api_users_list(chat_id: int = None) -> list:
     return json_users_data
 
 
-# use kwargs name from ApiUserModel
-def partial_update_api_users(id: int, **kwargs) -> dict:
+# use kwargs name from ApiUserModel. Required 'id' or 'chat_id'
+def partial_update_api_users(id: int = None, **kwargs) -> dict:
     headers = {
         'Authorization': 'Api-Key ' + APIKEY,
     }
+    if id is None:
+        id = get_api_users_list(chat_id)[0]['id']
+    else:
+        id = id
     data = {}
     data['id'] = id
     for element in kwargs:

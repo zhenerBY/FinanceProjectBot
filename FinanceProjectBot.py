@@ -11,7 +11,8 @@ from keyboa import Keyboa
 from BotAdditional import parser, act_EXP_INC, check_existence
 from bot_matplotlib.matplotlib import get_balance_pie_chart, get_categories_type_pie_chart, get_category_pie_chart
 from bot_request.request import get_categories, get_operations, del_operations, get_operation, add_categories, \
-    add_operations, partial_update_operations, add_or_update_api_user, del_categories
+    add_operations, partial_update_operations, add_or_update_api_user, del_categories, partial_update_api_users, \
+    get_api_users_list
 
 load_dotenv()
 
@@ -30,6 +31,7 @@ user_dict = {}
 class User():
     def __init__(self):
         self.date_filter = None
+        self.date_filter_end = None
         self.pin_message_id = None
 
 
@@ -74,6 +76,7 @@ class OperationStates:
 # class for states
 class PeriodStates:
     period = 21
+    period_end = 22
 
 
 @bot.message_handler(commands=['start'])
@@ -81,8 +84,10 @@ def send_welcome(message):
     add_or_update_api_user(chat_id=message.chat.id, first_name=message.chat.first_name,
                            last_name=message.chat.last_name, username=message.chat.username)
     bot.send_message(chat_id=message.chat.id, text=f'Hello {message.chat.first_name}!\n'
-                                                   f'Для начала работы введите "/fin"\n'
-                                                   f'Для указания периода ведите "/per"')
+                                                   f'Для начала работы введите "/fin".\n'
+                                                   f'Для задания периода только за\n'
+                                                   f'который будут отображаться операции \n'
+                                                   f'ведите "/per".')
 
 
 @bot.message_handler(commands=['help'])
@@ -116,13 +121,17 @@ def start(message):
 def reset_period(message):
     chat_id = message.message.chat.id
     message_id = message.message.id
+    user_data = get_api_users_list(chat_id=chat_id)[0]
     date_filter = 'не установлен.\nОтображаются все операции.'
-    if chat_id not in user_dict.keys():
-        user_dict[chat_id] = User()
-    if user_dict[chat_id].date_filter is not None:
+    if user_data['date_filter_end'] is None:
+        date_filter_end = datetime.now().date()
+    else:
+        date_filter_end = date.fromisoformat(user_data['date_filter_end'])
+    if user_data['date_filter_start'] is not None:
+        date_filter_start = date.fromisoformat(user_data['date_filter_start'])
         date_filter = f'\n' \
-                      f'с  - {user_dict[chat_id].date_filter.strftime("%d %B %Y")}\n' \
-                      f'по - {datetime.now().date().strftime("%d %B %Y")}'
+                      f'с  - {date_filter_start.strftime("%d %B %Y")}\n' \
+                      f'по - {date_filter_end.strftime("%d %B %Y")}'
     kb_start = Keyboa(items=[
         {'✅ Установить период': 'set_period'},
         {'✳ Сбросить период': 'reset_period'},
@@ -136,12 +145,25 @@ def reset_period(message):
 def reset_period(message):
     chat_id = message.message.chat.id
     message_id = message.message.id
-    user_dict[chat_id].date_filter = None
-    if user_dict[chat_id].pin_message_id is not None:
-        bot.delete_message(chat_id=chat_id, message_id=user_dict[chat_id].pin_message_id)
-    bot.edit_message_text(chat_id=chat_id, message_id=message_id,
-                          text=f'Период сброшен. Отображаются все операции.\n'
-                               f'Для продолжения введите "/fin"')
+    user_data = get_api_users_list(chat_id=chat_id)[0]
+    if user_data['pin_message_id'] is not None:
+        try:
+            bot.delete_message(chat_id=chat_id, message_id=user_data['pin_message_id'])
+        except Exception as ex:
+            print(ex)
+        user_data['pin_message_id'] = None
+    user_data['date_filter_start'] = None
+    user_data['date_filter_end'] = None
+    partial_update_api_users(id=user_data['id'],
+                             date_filter_start=user_data['date_filter_start'],
+                             date_filter_end=user_data['date_filter_end'],
+                             pin_message_id=user_data['pin_message_id'])
+    kb_previous = Keyboa(items=[
+        {'⬅ Вернуться на шаг назад ': 'period'},
+        {'❎ Закрыть': 'close_period'},
+    ]).keyboard
+    bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_previous,
+                          text=f'Период сброшен. Отображаются все операции.')
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'set_period')
@@ -152,10 +174,10 @@ def set_period(message):
         '⬅ Вернуться на шаг назад ': 'period'
     }).keyboard
     kb_per = Keyboa(items=[
-        {'Неделя': 'we'},
-        {'Месяц': 'mo'},
-        {'Три месяца': 'm3'},
-        {'Пол года': 'hy'},
+        {'За неделю': 'we'},
+        {'За месяц': 'mo'},
+        {'За три месяца': 'm3'},
+        {'За пол года': 'hy'},
         {'Указать произвольную дату': 'xx'},
     ], front_marker="&pr1=", back_marker="$", items_in_row=2).keyboard
     kb_all = Keyboa.combine(keyboards=(kb_per, kb_previous))
@@ -175,23 +197,30 @@ def callback_inline(message):
     chat_id = message.message.chat.id
     message_id = message.message.id
     data = parser(message.data)
+    user_data = get_api_users_list(chat_id=chat_id)[0]
     if data[1] == 'we':
-        user_dict[chat_id].date_filter = datetime.now().date() - relativedelta(weeks=1)
+        user_data['date_filter_start'] = (datetime.now().date() - relativedelta(weeks=1)).isoformat()
     elif data[1] == 'mo':
-        user_dict[chat_id].date_filter = datetime.now().date() - relativedelta(months=1)
+        user_data['date_filter_start'] = (datetime.now().date() - relativedelta(months=1)).isoformat()
     elif data[1] == 'm3':
-        user_dict[chat_id].date_filter = datetime.now().date() - relativedelta(years=1)
+        user_data['date_filter_start'] = (datetime.now().date() - relativedelta(months=3)).isoformat()
     elif data[1] == 'hy':
-        user_dict[chat_id].date_filter = datetime.now().date() - relativedelta(months=6)
+        user_data['date_filter_start'] = (datetime.now().date() - relativedelta(months=6)).isoformat()
     if data[1] != 'xx':
+        user_data['date_filter_end'] = None
         kb_previous = Keyboa(items={
             '⬅ Вернуться назад ': 'period'
         }).keyboard
         pin_text = f'‼ Установлен период ‼\n' \
-                   f'с  - {user_dict[chat_id].date_filter.strftime("%d %B %Y")}\n' \
-                   f'по - {datetime.now().date().strftime("%d %B %Y")}'
+                   f'с  - {date.fromisoformat(user_data["date_filter_start"]).strftime("%d %B %Y")}\n' \
+                   f'по - {datetime.now().date().strftime("%d %B %Y")} \n' \
+                   f'Операции за рамками периода не отображаются'
         bot.edit_message_text(chat_id=chat_id, message_id=message_id, text=pin_text)
-        user_dict[chat_id].pin_message_id = message_id
+        user_data['pin_message_id'] = message_id
+        partial_update_api_users(id=user_data['id'],
+                                 date_filter_start=user_data['date_filter_start'],
+                                 date_filter_end=user_data['date_filter_end'],
+                                 pin_message_id=user_data['pin_message_id'])
         bot.pin_chat_message(chat_id=chat_id, message_id=message_id)
         bot.send_message(chat_id=chat_id, reply_markup=kb_previous, text=f'Период установлен.')
     else:
@@ -651,7 +680,8 @@ def period_period_get(message):
         user_dict[chat_id].date_filter = period_date
     pin_text = f'‼ Установлен период ‼\n' \
                f'с  - {user_dict[chat_id].date_filter.strftime("%d %B %Y")}\n' \
-               f'по - {datetime.now().date().strftime("%d %B %Y")}'
+               f'по - {datetime.now().date().strftime("%d %B %Y")} \n' \
+               f'Операции за рамками периода не отображаются'
     kb_next = Keyboa(items={
         'Продолжить ➡': backstep
     }).keyboard
