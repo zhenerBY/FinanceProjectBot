@@ -228,7 +228,9 @@ def callback_inline(message):
         with bot.retrieve_data(chat_id) as r_data:
             bot.delete_message(chat_id=chat_id, message_id=message_id)
             r_data['backstep'] = 'period'
-        bot.send_message(chat_id=chat_id, text='Введите дату в формате "dd-mm-yyyy"\n(для отмены введите "/cancel")')
+        bot.send_message(chat_id=chat_id, text='Введите дату начала периода\n'
+                                               'формат "dd-mm-yyyy"\n'
+                                               '(для отмены введите "/cancel")')
 
 
 @bot.callback_query_handler(func=lambda call: call.data == 'main_menu')
@@ -666,37 +668,58 @@ def operation_amount_get(message):
 @bot.message_handler(state=OperationStates.amount, is_float=False)
 def operation_amount_incorrect(message):
     bot.delete_message(chat_id=message.chat.id, message_id=message.message_id - 1)
-    bot.send_message(message.chat.id, 'Введенное значение не является числом. Повторите ввод.')
+    bot.send_message(message.chat.id, 'Введенное значение не является числом. Повторите ввод.\n'
+                                      '(для отмены введите "/cancel")')
 
 
 @bot.message_handler(state=PeriodStates.period, is_correct_date=True)
 def period_period_get(message):
+    bot.delete_message(chat_id=message.chat.id, message_id=message.message_id - 1)
+    bot.set_state(message.from_user.id, PeriodStates.period_end)
+    with bot.retrieve_data(message.from_user.id) as data:
+        data['period'] = datetime.strptime(message.text, '%d-%m-%Y').date()
+    bot.send_message(chat_id=message.chat.id, text='Введите дату окончания периода\n'
+                                                   'формат "dd-mm-yyyy"\n'
+                                                   '(для отмены введите "/cancel")')
+
+
+@bot.message_handler(state=PeriodStates.period, is_correct_date=False)
+@bot.message_handler(state=PeriodStates.period_end, is_correct_date=False)
+def period_false_get(message):
+    bot.delete_message(chat_id=message.chat.id, message_id=message.message_id - 1)
+    bot.send_message(message.chat.id, 'Введенное значение не корректно. Повторите ввод\n'
+                                      '(для отмены введите "/cancel")')
+
+
+@bot.message_handler(state=PeriodStates.period_end, is_correct_date=True)
+def period_period_end_get(message):
+    bot.set_state(message.from_user.id, PeriodStates.period_end)
     chat_id = message.chat.id
     message_id = message.message_id
-    # bot.delete_message(chat_id=message.chat.id, message_id=message.message_id - 1)
+    user_data = get_api_users_list(chat_id=chat_id)[0]
     with bot.retrieve_data(message.from_user.id) as data:
+        period = data['period']
+        period_end = datetime.strptime(message.text, '%d-%m-%Y').date()
         backstep = data['backstep']
-        period_date = datetime.strptime(message.text, '%d-%m-%Y').date()
-        user_dict[chat_id].date_filter = period_date
     pin_text = f'‼ Установлен период ‼\n' \
-               f'с  - {user_dict[chat_id].date_filter.strftime("%d %B %Y")}\n' \
-               f'по - {datetime.now().date().strftime("%d %B %Y")} \n' \
+               f'с  - {period.strftime("%d %B %Y")}\n' \
+               f'по - {period_end.strftime("%d %B %Y")} \n' \
                f'Операции за рамками периода не отображаются'
     kb_next = Keyboa(items={
         'Продолжить ➡': backstep
     }).keyboard
     bot.edit_message_text(chat_id=chat_id, message_id=message_id - 1, text=pin_text)
-    user_dict[chat_id].pin_message_id = message_id - 1
+    user_data['pin_message_id'] = message_id - 1
+    user_data['date_filter_start'] = period.isoformat()
+    user_data['date_filter_end'] = period_end.isoformat()
     bot.pin_chat_message(chat_id=chat_id, message_id=message_id - 1)
-    bot.send_message(chat_id=message.chat.id, text=f'Период c {period_date.strftime("%d-%B-%Y")} установлен.',
+    bot.send_message(chat_id=chat_id, text=f'Период c установлен.',
                      reply_markup=kb_next)
+    partial_update_api_users(id=user_data['id'],
+                             date_filter_start=user_data['date_filter_start'],
+                             date_filter_end=user_data['date_filter_end'],
+                             pin_message_id=user_data['pin_message_id'])
     bot.delete_state(message.from_user.id)
-
-
-@bot.message_handler(state=PeriodStates.period, is_correct_date=False)
-def period_false_get(message):
-    bot.delete_message(chat_id=message.chat.id, message_id=message.message_id - 1)
-    bot.send_message(message.chat.id, 'Введенное значение не корректно. Повторите ввод')
 
 
 # repeater
