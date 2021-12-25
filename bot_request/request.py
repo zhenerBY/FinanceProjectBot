@@ -32,11 +32,15 @@ def get_api_users_list(chat_id: int = None) -> list:
     return json_users_data
 
 
-# use kwargs name from ApiUserModel
-def partial_update_api_users(id: int, **kwargs) -> dict:
+# use kwargs name from ApiUserModel. Required 'id' or 'chat_id'
+def partial_update_api_users(id: int = None, **kwargs) -> dict:
     headers = {
         'Authorization': 'Api-Key ' + APIKEY,
     }
+    if id is None:
+        id = get_api_users_list(chat_id)[0]['id']
+    else:
+        id = id
     data = {}
     data['id'] = id
     for element in kwargs:
@@ -62,7 +66,7 @@ def add_api_users(chat_id, first_name: str = None, last_name: str = None, userna
     return json_users_data
 
 
-def add_or_update_api_user(chat_id: int, **kwargs):
+def add_or_update_api_user(chat_id: int, **kwargs) -> dict:
     response = get_api_users_list(chat_id=chat_id)
     if response == []:
         return add_api_users(chat_id, **kwargs)
@@ -74,39 +78,30 @@ def add_or_update_api_user(chat_id: int, **kwargs):
             update_dict[elemet] = kwargs[elemet]
     if update_dict != {}:
         partial_update_api_users(id=response[0]['id'], **update_dict)
+    return response[0]
 
 
 # С аргументом - только операции пользователя, без - все
 # Set the value 'cat_type' 'INC'|'EXP' for separated list
 # !!! Do not use at the same time 'cat_type' and 'category'
-def get_operations(chat_id: int = None, cat_type: str = None, category: int = None) -> list:
+def get_operations(chat_id: int = None, cat_type: str = None, category: int = None, date_filter_start: str = None,
+                   date_filter_end: str = None) -> list:
     headers = {
         'Authorization': 'Api-Key ' + APIKEY,
     }
+    data = {}
     if chat_id is not None:
-        data = {
-            'chat_id': chat_id,
-        }
-    else:
-        data = {}
+        data['chat_id'] = chat_id
     if cat_type is not None:
-        users_data = requests.get(HOST_API + 'ext_operations/', json=data, headers=headers)
-        json_users_data = users_data.json()
-        tmp = []
-        for item in json_users_data:
-            if item['category']['cat_type'] == cat_type:
-                item['user'] = item['user']['id']
-                item['category'] = item['category']['id']
-                tmp.append(item)
-        json_users_data = tmp
-    elif category is not None:
+        data['cat_type'] = cat_type
+    if category is not None:
         data['category'] = category
-        users_data = requests.get(HOST_API + 'operations/', json=data, headers=headers)
-        json_users_data = users_data.json()
-    else:
-        users_data = requests.get(HOST_API + 'operations/', json=data, headers=headers)
-        json_users_data = users_data.json()
-
+    if date_filter_start is not None:
+        data['date_filter_start'] = date_filter_start
+    if date_filter_end is not None:
+        data['date_filter_end'] = date_filter_end
+    users_data = requests.get(HOST_API + 'operations/', json=data, headers=headers)
+    json_users_data = users_data.json()
     return json_users_data
 
 
@@ -238,19 +233,24 @@ def del_categories(id: int) -> int:
     return users_data.status_code
 
 
-def get_balance(chat_id: int) -> dict:
+def get_balance(chat_id: int, date_filter_start: str = None, date_filter_end: str = None) -> dict:
     headers = {
         'Authorization': 'Api-Key ' + APIKEY,
     }
     data = {
         'chat_id': chat_id,
     }
+    if date_filter_start is not None:
+        data['date_filter_start'] = date_filter_start
+    if date_filter_end is not None:
+        data['date_filter_end'] = date_filter_end
     users_data = requests.get(HOST_API + 'operations/balance/', headers=headers, json=data)
     json_users_data = users_data.json()
     return json_users_data
 
 
-def get_categories_balance(chat_id: int, cat_type: str) -> dict:
+def get_categories_balance(chat_id: int, cat_type: str, date_filter_start: str = None,
+                           date_filter_end: str = None) -> dict:
     headers = {
         'Authorization': 'Api-Key ' + APIKEY,
     }
@@ -258,6 +258,10 @@ def get_categories_balance(chat_id: int, cat_type: str) -> dict:
         'chat_id': chat_id,
         'cat_type': cat_type
     }
+    if date_filter_start is not None:
+        data['date_filter_start'] = date_filter_start
+    if date_filter_end is not None:
+        data['date_filter_end'] = date_filter_end
     users_data = requests.get(HOST_API + 'operations/cat_balance/', headers=headers, json=data)
     json_users_data = users_data.json()
     return json_users_data
