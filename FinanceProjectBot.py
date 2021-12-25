@@ -8,7 +8,7 @@ import telebot
 from telebot import custom_filters, SimpleCustomFilter
 from keyboa import Keyboa
 
-from BotAdditional import parser, act_EXP_INC, check_existence
+from BotAdditional import parser, act_EXP_INC, check_existence, is_date_filter_exist
 from bot_matplotlib.matplotlib import get_balance_pie_chart, get_categories_type_pie_chart, get_category_pie_chart
 from bot_request.request import get_categories, get_operations, del_operations, get_operation, add_categories, \
     add_operations, partial_update_operations, add_or_update_api_user, del_categories, partial_update_api_users, \
@@ -27,11 +27,12 @@ bot = telebot.TeleBot(BOT_TOKEN)
 # 4 additional user's data. maybe it should be saved in BD
 user_dict = {}
 
+
 # Not used NOW
 # 4 additional user's data. maybe it should be saved in BD
 class User():
     def __init__(self):
-        self.date_filter = None
+        self.date_filter_start = None
         self.date_filter_end = None
         self.pin_message_id = None
 
@@ -199,6 +200,11 @@ def callback_inline(message):
     message_id = message.message.id
     data = parser(message.data)
     user_data = get_api_users_list(chat_id=chat_id)[0]
+    if 'pin_message_id' in user_data.keys():
+        try:
+            bot.delete_message(chat_id=chat_id, message_id=user_data['pin_message_id'])
+        except Exception as ex:
+            print(ex)
     if data[1] == 'we':
         user_data['date_filter_start'] = (datetime.now().date() - relativedelta(weeks=1)).isoformat()
     elif data[1] == 'mo':
@@ -238,6 +244,12 @@ def callback_inline(message):
 def kb_start(message):
     chat_id = message.message.chat.id
     message_id = message.message.id
+    user_data = get_api_users_list(chat_id=chat_id)[0]
+    if user_data['date_filter_start'] is not None:
+        alert_text = f"‼Внимание! Установлен период.‼\n" \
+                     f"‼Введите '/per' для изменения.‼\n\n"
+    else:
+        alert_text = ''
     kb_balance = Keyboa(items={
         '📊 Баланс': 'show_balance',
     }, front_marker="&st1=", back_marker="$").keyboard
@@ -248,10 +260,10 @@ def kb_start(message):
     kb_first = Keyboa.combine(keyboards=(kb_balance, kb_inc_exp))
     if message.message.text is not None:
         bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_first,
-                              text='Выберите необходимое действие')
+                              text=alert_text + 'Выберите необходимое действие')
     else:
         bot.delete_message(chat_id=chat_id, message_id=message_id)
-        bot.send_message(chat_id=chat_id, reply_markup=kb_first, text='Выберите необходимое действие')
+        bot.send_message(chat_id=chat_id, reply_markup=kb_first, text=alert_text + 'Выберите необходимое действие')
 
 
 @bot.callback_query_handler(func=lambda call: re.match(r'^&st1=', call.data))
@@ -288,7 +300,7 @@ def callback_inline(message):
             '⬆ Вернуться в основное меню': 'main_menu'
         }).keyboard
         if check_existence(chat_id=chat_id):
-            get_balance_pie_chart(user_id=chat_id)
+            get_balance_pie_chart(chat_id=chat_id)
             bot.delete_message(chat_id=chat_id, message_id=message_id)
             bot.send_photo(chat_id=chat_id, photo=open(f'picts/{chat_id}_balance.png', 'rb'), reply_markup=kb_menu,
                            caption=f'{first_name}, баланс Ваших расходов и доходов:')
@@ -327,7 +339,8 @@ def callback_inline(message):
         bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_second,
                               text='Выберите категорию')
     elif data[2] == 'del':
-        operations = get_operations(chat_id, data[1])
+        additional = is_date_filter_exist(chat_id=chat_id)
+        operations = get_operations(chat_id=chat_id, cat_type=data[1], **additional)
         if operations != []:
             for element in operations:
                 items.append({element['title']: element['id']})
@@ -340,7 +353,7 @@ def callback_inline(message):
                               text='Что хотите удалить?')
     elif data[2] == 'show_diagram':
         if check_existence(chat_id=chat_id, cat_type=data[1]):
-            get_categories_type_pie_chart(user_id=chat_id, cat_type=data[1])
+            get_categories_type_pie_chart(chat_id=chat_id, cat_type=data[1])
             bot.delete_message(chat_id=chat_id, message_id=message_id)
             bot.send_photo(chat_id=chat_id, photo=open(f'picts/{chat_id}_categories_type.png', 'rb'),
                            reply_markup=kb_previous,
@@ -390,7 +403,8 @@ def callback_inline(message):
     # print(message.data)
     if data[2] == 'show':
         if data[3] == 'all':
-            operations = get_operations(chat_id, data[1])
+            additional = is_date_filter_exist(chat_id=chat_id)
+            operations = get_operations(chat_id=chat_id, cat_type=data[1], **additional)
             if operations != []:
                 for element in operations:
                     items.append({element['title']: element['id']})
@@ -514,15 +528,22 @@ def callback_inline(message):
             bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
                                   text=text)
         if data[4][:2] == 'ct':
-            operations = get_operations(chat_id=chat_id, category=data[4][2:])
-            for element in operations:
-                items.append({element['title']: element['id']})
-            kb_operations = Keyboa(items=items, front_marker="&st5=", back_marker=message.data,
-                                   items_in_row=2).keyboard
-            kb_diag = Keyboa(items=[
-                {f'📊 Диаграмма {act}ов по категории': f'diag'},
-            ], front_marker="&st5=", back_marker=message.data).keyboard
-            kb_all = Keyboa.combine(keyboards=(kb_diag, kb_operations, kb_previous, kb_menu))
+            additional = is_date_filter_exist(chat_id=chat_id)
+            operations = get_operations(chat_id=chat_id, category=data[4][2:], **additional)
+            if operations != []:
+                for element in operations:
+                    items.append({element['title']: element['id']})
+                kb_operations = Keyboa(items=items, front_marker="&st5=", back_marker=message.data,
+                                       items_in_row=2).keyboard
+                kb_diag = Keyboa(items=[
+                    {f'📊 Диаграмма {act}ов по категории': f'diag'},
+                ], front_marker="&st5=", back_marker=message.data).keyboard
+                kb_all = Keyboa.combine(keyboards=(kb_diag, kb_operations, kb_previous, kb_menu))
+            else:
+                items.append({f'🚫 нет {act}ов для отображения 🚫': 'None'})
+                kb_operations = Keyboa(items=items, front_marker="&st5=", back_marker=message.data,
+                                       items_in_row=2).keyboard
+                kb_all = Keyboa.combine(keyboards=(kb_operations, kb_previous, kb_menu))
             if message.message.text is not None:
                 bot.edit_message_text(chat_id=chat_id, message_id=message_id, reply_markup=kb_all,
                                       text=f'Выберите {act} для детального отображения.')

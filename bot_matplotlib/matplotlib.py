@@ -1,6 +1,7 @@
 import numpy as np
 import matplotlib.pyplot as plt
 
+from BotAdditional import is_date_filter_exist
 from bot_request.request import get_balance, get_categories_balance, get_operations
 
 CHAT_ID = 11111111
@@ -12,8 +13,10 @@ def func(pct, allvals):
     return "{:.1f}\n({:.1f}%)".format(absolute, pct)
 
 
-def get_balance_pie_chart(user_id: int):
-    balance = get_balance(user_id)
+def get_balance_pie_chart(chat_id: int):
+    additional = is_date_filter_exist(chat_id=chat_id)
+    balance = get_balance(chat_id=chat_id, **additional)
+    print(balance)
     labels = 'Income', 'Expenses'
     sizes = [balance['balance']['inc'], balance['balance']['exp']]
     explode = (0.05, 0.05)  # only "explode" the 2nd slice (i.e. 'Hogs')
@@ -22,13 +25,14 @@ def get_balance_pie_chart(user_id: int):
             shadow=True, startangle=90)
     ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
     # safe file
-    plt.savefig(f'picts/{user_id}_balance.png', transparent=True)
+    plt.savefig(f'picts/{chat_id}_balance.png', transparent=True)
     # plt.show()
     plt.close('all')
 
 
-def get_categories_type_pie_chart(user_id: int, cat_type: str):
-    balance = get_categories_balance(user_id, cat_type)
+def get_categories_type_pie_chart(chat_id: int, cat_type: str):
+    additional = is_date_filter_exist(chat_id=chat_id)
+    balance = get_categories_balance(chat_id=chat_id, cat_type=cat_type, **additional)
     labels = []
     sizes = []
     explode = []
@@ -41,13 +45,14 @@ def get_categories_type_pie_chart(user_id: int, cat_type: str):
             shadow=True, startangle=90)
     ax1.axis('equal')  # Equal aspect ratio ensures that pie is drawn as a circle.
     # safe file
-    plt.savefig(f'picts/{user_id}_categories_type.png', transparent=True)
+    plt.savefig(f'picts/{chat_id}_categories_type.png', transparent=True)
     # plt.show()
     plt.close('all')
 
 
 def get_category_pie_chart(chat_id: int, category: int):
-    operations = get_operations(chat_id=chat_id, category=category)
+    additional = is_date_filter_exist(chat_id=chat_id)
+    operations = get_operations(chat_id=chat_id, category=category, **additional)
     labels = []
     sizes = []
     explode = []
