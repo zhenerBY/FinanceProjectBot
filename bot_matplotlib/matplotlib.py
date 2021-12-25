@@ -16,7 +16,6 @@ def func(pct, allvals):
 def get_balance_pie_chart(chat_id: int):
     additional = is_date_filter_exist(chat_id=chat_id)
     balance = get_balance(chat_id=chat_id, **additional)
-    print(balance)
     labels = 'Income', 'Expenses'
     sizes = [balance['balance']['inc'], balance['balance']['exp']]
     explode = (0.05, 0.05)  # only "explode" the 2nd slice (i.e. 'Hogs')
