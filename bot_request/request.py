@@ -267,65 +267,55 @@ def get_categories_balance(chat_id: int, cat_type: str, date_filter_start: str =
     return json_users_data
 
 
-# use only if token doesn't exist
-# !!! NOT 4 BOT !!!
-# def create_jrf_token(username: str) -> str:
-#     from rest_framework.authtoken.models import Token
-#     from main.models import AdvUser
-#     user = AdvUser.objects.get(username=username)
-#     token = Token.objects.create(user=user)
-#     return token.key
-
-
-# get JWT token. Работает, но пока не используется.
-def get_token(username: str, password: str) -> dict:
-    data = {
-        'username': username,
-        'password': password,
-    }
-    # if is_user_exist(chat_id):
-    #     # return requests.post(HOST_API + 'token/', json=data).json()['access']
-    #     return requests.post(HOST_API + 'token/', json=data).json()
-    # return 'User not registered'
-    return requests.post(HOST_API + 'token/', json=data).json()
-
-
-# Старые примеры. МНогое уже не работает.
-
-# def get_token(chat_id: int) -> str:
+# # get JWT token. Работает, но пока не используется.
+# def get_token(username: str, password: str) -> dict:
+#     data = {
+#         'username': username,
+#         'password': password,
+#     }
+#     # if is_user_exist(chat_id):
+#     #     # return requests.post(HOST_API + 'token/', json=data).json()['access']
+#     #     return requests.post(HOST_API + 'token/', json=data).json()
+#     # return 'User not registered'
+#     return requests.post(HOST_API + 'token/', json=data).json()
+#
+#
+# # Старые примеры. МНогое уже не работает.
+#
+# # def get_token(chat_id: int) -> str:
+# #     data = {
+# #         'username': chat_id,
+# #         'password': chat_id,
+# #     }
+# #     if is_user_exist(chat_id):
+# #         # return requests.post(HOST_API + 'token/', json=data).json()['access']
+# #         return requests.post(HOST_API + 'token/', json=data).json()
+# #     return 'User not registered'
+#
+#
+# def get_users_list(chat_id: int) -> list:
+#     headers = {
+#         'Authorization': 'Bearer ' + get_token(chat_id),
+#     }
+#     users_data = requests.get(HOST_API + 'users/', headers=headers)
+#     json_users_data = users_data.json()
+#     return json_users_data
+#
+#
+# def user_registration(chat_id: int) -> None:
+#     if not is_user_exist(chat_id):
+#         data = {
+#             'username': chat_id,
+#             'password': chat_id,
+#         }
+#         requests.post(HOST_API + 'users/register/', json=data)
+#
+#
+# def is_user_exist(chat_id: int) -> bool:
 #     data = {
 #         'username': chat_id,
 #         'password': chat_id,
 #     }
-#     if is_user_exist(chat_id):
-#         # return requests.post(HOST_API + 'token/', json=data).json()['access']
-#         return requests.post(HOST_API + 'token/', json=data).json()
-#     return 'User not registered'
-
-
-def get_users_list(chat_id: int) -> list:
-    headers = {
-        'Authorization': 'Bearer ' + get_token(chat_id),
-    }
-    users_data = requests.get(HOST_API + 'users/', headers=headers)
-    json_users_data = users_data.json()
-    return json_users_data
-
-
-def user_registration(chat_id: int) -> None:
-    if not is_user_exist(chat_id):
-        data = {
-            'username': chat_id,
-            'password': chat_id,
-        }
-        requests.post(HOST_API + 'users/register/', json=data)
-
-
-def is_user_exist(chat_id: int) -> bool:
-    data = {
-        'username': chat_id,
-        'password': chat_id,
-    }
-    if requests.post(HOST_API + 'token/', json=data).status_code == 200:
-        return True
-    return False
+#     if requests.post(HOST_API + 'token/', json=data).status_code == 200:
+#         return True
+#     return False

@@ -1,4 +1,4 @@
-from datetime import datetime, date, timedelta
+from datetime import datetime, date
 from dateutil.relativedelta import relativedelta
 from dotenv import load_dotenv
 import os
@@ -22,19 +22,6 @@ load_dotenv()
 BOT_TOKEN = '5065010726:AAGDDYrw3cQVshBNBSqklLSTjgT2GauBBYM'
 
 bot = telebot.TeleBot(BOT_TOKEN)
-
-# Not used NOW
-# 4 additional user's data. maybe it should be saved in BD
-user_dict = {}
-
-
-# Not used NOW
-# 4 additional user's data. maybe it should be saved in BD
-class User():
-    def __init__(self):
-        self.date_filter_start = None
-        self.date_filter_end = None
-        self.pin_message_id = None
 
 
 # Add Own custom filter
