@@ -17,9 +17,7 @@ from bot_request.request import get_categories, get_operations, del_operations, 
 load_dotenv()
 
 # !!!! Edit before deploy!!!!
-# BOT_TOKEN = os.getenv("BOT_TOKEN")
-
-BOT_TOKEN = '5065010726:AAGDDYrw3cQVshBNBSqklLSTjgT2GauBBYM'
+BOT_TOKEN = os.getenv("BOT_TOKEN")
 
 bot = telebot.TeleBot(BOT_TOKEN)
 

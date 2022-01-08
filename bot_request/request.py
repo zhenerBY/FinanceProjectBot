@@ -1,18 +1,15 @@
+import os
+
 from dotenv import load_dotenv
 import requests
 import json
 
 load_dotenv()
 
-HOST_API = 'http://127.0.0.1:8000/api/'
-chat_id = 134203883
-TOKEN = '994f61ba4bd900112ae616ef66c09fe086576b2e'
-APIKEY = 'J8W5JPDw.6zXqClii0tX5pH7e0byYo9bQHjUHuVoz'
-
-
 # !!!! Edit before deploy!!!!
-# HOST_API = os.getenv("HOST_API")
-# APIKEY = os.getenv("APIKEY")
+HOST_API = os.getenv("HOST_API")
+APIKEY = os.getenv("APIKEY")
+
 
 # Примеры работы для бота
 
@@ -37,10 +34,10 @@ def partial_update_api_users(id: int = None, **kwargs) -> dict:
     headers = {
         'Authorization': 'Api-Key ' + APIKEY,
     }
-    if id is None:
-        id = get_api_users_list(chat_id)[0]['id']
-    else:
-        id = id
+    # if id is None:
+    #     id = get_api_users_list(chat_id)[0]['id']
+    # else:
+    #     id = id
     data = {}
     data['id'] = id
     for element in kwargs:
@@ -265,7 +262,6 @@ def get_categories_balance(chat_id: int, cat_type: str, date_filter_start: str =
     users_data = requests.get(HOST_API + 'operations/cat_balance/', headers=headers, json=data)
     json_users_data = users_data.json()
     return json_users_data
-
 
 # # get JWT token. Работает, но пока не используется.
 # def get_token(username: str, password: str) -> dict:
