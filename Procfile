@@ -1,1 +1,1 @@
-bot: python FinanceProjectBot.py
+web: python3 FinanceProjectBot.py
