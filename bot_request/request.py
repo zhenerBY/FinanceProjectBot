@@ -115,7 +115,7 @@ def get_operation(chat_id: int, id: int) -> dict:
     data = {
         'chat_id': chat_id,
     }
-    url = HOST_API + 'ext_operations/'
+    url = HOST_API + 'ext_operations/' + str(id) + '/'
     users_data = api_request(method='GET', json=data, url=url)
     json_users_data = users_data.json()
     return json_users_data
