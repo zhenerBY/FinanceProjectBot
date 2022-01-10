@@ -12,52 +12,62 @@ APIKEY = os.getenv("APIKEY")
 
 
 # Примеры работы для бота
+def api_request(method=None,
+                url=None,
+                headers=None,
+                json=None):
+    headers = {} if headers is None else headers
+    headers.update(
+        {
+            'Authorization': 'Api-Key ' + APIKEY,
+        }
+    )
+    req = requests.Request(
+        method=method,
+        url=url,
+        headers=headers,
+        json=json
+    )
+    r = req.prepare()
+    s = requests.Session()
+    return s.send(r)
+
 
 # С аргументов выводит только текущего пользователя, без - всех
 def get_api_users_list(chat_id: int = None) -> list:
-    headers = {
-        'Authorization': 'Api-Key ' + APIKEY,
-    }
     if chat_id is not None:
         data = {
             'chat_id': chat_id,
         }
     else:
         data = {}
-    users_data = requests.get(HOST_API + 'apiusers/', json=data, headers=headers)
+    url = HOST_API + 'apiusers/'
+    users_data = api_request(method='GET', json=data, url=url)
     json_users_data = users_data.json()
     return json_users_data
 
 
 # use kwargs name from ApiUserModel. Required 'id' or 'chat_id'
 def partial_update_api_users(id: int = None, **kwargs) -> dict:
-    headers = {
-        'Authorization': 'Api-Key ' + APIKEY,
-    }
-    # if id is None:
-    #     id = get_api_users_list(chat_id)[0]['id']
-    # else:
-    #     id = id
     data = {}
     data['id'] = id
     for element in kwargs:
         data[element] = kwargs[element]
-    response = requests.patch(HOST_API + 'apiusers/' + str(id) + '/', json=data, headers=headers)
+    url = HOST_API + 'apiusers/' + str(id) + '/'
+    response = api_request(method='PATCH', json=data, url=url)
     json_responce = response.json()
     return json_responce
 
 
 def add_api_users(chat_id, first_name: str = None, last_name: str = None, username: str = None) -> dict:
-    headers = {
-        'Authorization': 'Api-Key ' + APIKEY,
-    }
     data = {
         'chat_id': chat_id,
         'first_name': first_name,
         'last_name': last_name,
         'username': username,
     }
-    users_data = requests.post(HOST_API + 'apiusers/', json=data, headers=headers)
+    url = HOST_API + 'apiusers/'
+    users_data = api_request(method='POST', json=data, url=url)
     json_users_data = users_data.json()
     json_users_data['status_code'] = users_data.status_code
     return json_users_data
@@ -83,9 +93,6 @@ def add_or_update_api_user(chat_id: int, **kwargs) -> dict:
 # !!! Do not use at the same time 'cat_type' and 'category'
 def get_operations(chat_id: int = None, cat_type: str = None, category: int = None, date_filter_start: str = None,
                    date_filter_end: str = None) -> list:
-    headers = {
-        'Authorization': 'Api-Key ' + APIKEY,
-    }
     data = {}
     if chat_id is not None:
         data['chat_id'] = chat_id
@@ -97,33 +104,30 @@ def get_operations(chat_id: int = None, cat_type: str = None, category: int = No
         data['date_filter_start'] = date_filter_start
     if date_filter_end is not None:
         data['date_filter_end'] = date_filter_end
-    users_data = requests.get(HOST_API + 'operations/', json=data, headers=headers)
+    url = HOST_API + 'operations/'
+    users_data = api_request(method='GET', json=data, url=url)
     json_users_data = users_data.json()
     return json_users_data
 
 
 # get detailed information
 def get_operation(chat_id: int, id: int) -> dict:
-    headers = {
-        'Authorization': 'Api-Key ' + APIKEY,
-    }
     data = {
         'chat_id': chat_id,
     }
-    users_data = requests.get(HOST_API + 'ext_operations/' + str(id) + '/', json=data, headers=headers)
+    url = HOST_API + 'ext_operations/'
+    users_data = api_request(method='GET', json=data, url=url)
     json_users_data = users_data.json()
     return json_users_data
 
 
 # get list of dict {name:id}
 def get_list_of_name_operations(chat_id: int, cat_type: str) -> list:
-    headers = {
-        'Authorization': 'Api-Key ' + APIKEY,
-    }
     data = {
         'chat_id': chat_id,
     }
-    users_data = requests.get(HOST_API + 'ext_operations/', json=data, headers=headers)
+    url = HOST_API + 'ext_operations/'
+    users_data = api_request(method='GET', json=data, url=url)
     json_users_data = users_data.json()
     tmp = []
     for item in json_users_data:
@@ -136,9 +140,6 @@ def get_list_of_name_operations(chat_id: int, cat_type: str) -> list:
 # создание операции. Если указан chat_id -> user игнорируется
 def add_operations(title: str, description: str, amount: float, category: int, user: int = 1,
                    chat_id: int = None) -> dict:
-    headers = {
-        'Authorization': 'Api-Key ' + APIKEY,
-    }
     if chat_id is not None:
         data = {
             "title": title,
@@ -155,43 +156,37 @@ def add_operations(title: str, description: str, amount: float, category: int, u
             "user": user,
             "category": category,
         }
-    response = requests.post(HOST_API + 'operations/', json=data, headers=headers)
+    url = HOST_API + 'operations/'
+    response = api_request(method='POST', json=data, url=url)
     json_responce = response.json()
     return json_responce
 
 
 # use kwargs name from OperationModel
 def partial_update_operations(id: int, **kwargs) -> dict:
-    headers = {
-        'Authorization': 'Api-Key ' + APIKEY,
-    }
     data = {}
     for element in kwargs:
         data[element] = kwargs[element]
-    response = requests.patch(HOST_API + 'operations/' + str(id) + '/', json=data, headers=headers)
+    url = HOST_API + 'operations/' + str(id) + '/'
+    response = api_request(method='PATCH', json=data, url=url)
     json_responce = response.json()
     return json_responce
 
 
 # fake operation deletion
 def del_operations(id: int) -> dict:
-    headers = {
-        'Authorization': 'Api-Key ' + APIKEY,
-    }
     data = {
         'id': id,
         'is_active': False
     }
-    response = requests.patch(HOST_API + 'operations/' + str(id) + '/', json=data, headers=headers)
+    url = HOST_API + 'operations/' + str(id) + '/'
+    response = api_request(method='PATCH', json=data, url=url)
     json_responce = response.json()
     return json_responce
 
 
 # Set the value 'INC'|'EXP' for separated list
 def get_categories(cat_type: str = None, chat_id: int = None, unused: bool = None) -> list:
-    headers = {
-        'Authorization': 'Api-Key ' + APIKEY,
-    }
     data = {}
     if chat_id is not None:
         data['chat_id'] = chat_id
@@ -202,38 +197,31 @@ def get_categories(cat_type: str = None, chat_id: int = None, unused: bool = Non
             data['unused'] = False
         else:
             data['unused'] = True
-    users_data = requests.get(HOST_API + 'categories/', headers=headers,
-                              json=data)
+    url = HOST_API + 'categories/'
+    users_data = api_request(method='GET', json=data, url=url)
     json_users_data = users_data.json()
     return json_users_data
 
 
 def add_categories(name: str, cat_type: str, chat_id: int) -> dict:
-    headers = {
-        'Authorization': 'Api-Key ' + APIKEY,
-    }
     data = {
         'name': name,
         'cat_type': cat_type,
         'chat_id': chat_id,
     }
-    users_data = requests.post(HOST_API + 'categories/', json=data, headers=headers)
+    url = HOST_API + 'categories/'
+    users_data = api_request(method='POST', json=data, url=url)
     json_users_data = users_data.json()
     return json_users_data
 
 
 def del_categories(id: int) -> int:
-    headers = {
-        'Authorization': 'Api-Key ' + APIKEY,
-    }
-    users_data = requests.delete(HOST_API + 'categories/' + str(id) + '/', headers=headers)
+    url = HOST_API + 'categories/' + str(id) + '/'
+    users_data = api_request(method='DELETE', url=url)
     return users_data.status_code
 
 
 def get_balance(chat_id: int, date_filter_start: str = None, date_filter_end: str = None) -> dict:
-    headers = {
-        'Authorization': 'Api-Key ' + APIKEY,
-    }
     data = {
         'chat_id': chat_id,
     }
@@ -241,16 +229,14 @@ def get_balance(chat_id: int, date_filter_start: str = None, date_filter_end: st
         data['date_filter_start'] = date_filter_start
     if date_filter_end is not None:
         data['date_filter_end'] = date_filter_end
-    users_data = requests.get(HOST_API + 'operations/balance/', headers=headers, json=data)
+    url = HOST_API + 'operations/balance/'
+    users_data = api_request(method='GET', json=data, url=url)
     json_users_data = users_data.json()
     return json_users_data
 
 
 def get_categories_balance(chat_id: int, cat_type: str, date_filter_start: str = None,
                            date_filter_end: str = None) -> dict:
-    headers = {
-        'Authorization': 'Api-Key ' + APIKEY,
-    }
     data = {
         'chat_id': chat_id,
         'cat_type': cat_type
@@ -259,59 +245,7 @@ def get_categories_balance(chat_id: int, cat_type: str, date_filter_start: str =
         data['date_filter_start'] = date_filter_start
     if date_filter_end is not None:
         data['date_filter_end'] = date_filter_end
-    users_data = requests.get(HOST_API + 'operations/cat_balance/', headers=headers, json=data)
+    url = HOST_API + 'operations/cat_balance/'
+    users_data = api_request(method='GET', json=data, url=url)
     json_users_data = users_data.json()
     return json_users_data
-
-# # get JWT token. Работает, но пока не используется.
-# def get_token(username: str, password: str) -> dict:
-#     data = {
-#         'username': username,
-#         'password': password,
-#     }
-#     # if is_user_exist(chat_id):
-#     #     # return requests.post(HOST_API + 'token/', json=data).json()['access']
-#     #     return requests.post(HOST_API + 'token/', json=data).json()
-#     # return 'User not registered'
-#     return requests.post(HOST_API + 'token/', json=data).json()
-#
-#
-# # Старые примеры. МНогое уже не работает.
-#
-# # def get_token(chat_id: int) -> str:
-# #     data = {
-# #         'username': chat_id,
-# #         'password': chat_id,
-# #     }
-# #     if is_user_exist(chat_id):
-# #         # return requests.post(HOST_API + 'token/', json=data).json()['access']
-# #         return requests.post(HOST_API + 'token/', json=data).json()
-# #     return 'User not registered'
-#
-#
-# def get_users_list(chat_id: int) -> list:
-#     headers = {
-#         'Authorization': 'Bearer ' + get_token(chat_id),
-#     }
-#     users_data = requests.get(HOST_API + 'users/', headers=headers)
-#     json_users_data = users_data.json()
-#     return json_users_data
-#
-#
-# def user_registration(chat_id: int) -> None:
-#     if not is_user_exist(chat_id):
-#         data = {
-#             'username': chat_id,
-#             'password': chat_id,
-#         }
-#         requests.post(HOST_API + 'users/register/', json=data)
-#
-#
-# def is_user_exist(chat_id: int) -> bool:
-#     data = {
-#         'username': chat_id,
-#         'password': chat_id,
-#     }
-#     if requests.post(HOST_API + 'token/', json=data).status_code == 200:
-#         return True
-#     return False
