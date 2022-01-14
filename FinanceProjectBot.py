@@ -17,12 +17,14 @@ from bot_request.request import get_categories, get_operations, del_operations, 
 
 load_dotenv()
 
-# !!!! Edit before deploy!!!!
 BOT_TOKEN = os.getenv("BOT_TOKEN")
+
+# BOT webhook
 WEBHOOK_URL = os.getenv("WEBHOOK_URL")
 
-
 bot = telebot.TeleBot(BOT_TOKEN)
+
+# BOT webhook
 server = Flask(__name__)
 
 
@@ -745,11 +747,10 @@ bot.add_custom_filter(IsFloatFilter())
 bot.add_custom_filter(IsCorrectDateFilter())
 
 
-# # set saving states into file.
-# bot.enable_saving_states()  # you can delete this if you do not need to save states
-
+# BOT infinity_polling
 # bot.infinity_polling()
 
+# BOT webhook
 @server.route('/' + BOT_TOKEN, methods=['POST'])
 def getMessage():
     json_string = request.get_data().decode('utf-8')
@@ -758,6 +759,7 @@ def getMessage():
     return "!", 200
 
 
+# BOT webhook
 @server.route("/")
 def webhook():
     bot.remove_webhook()
@@ -765,5 +767,6 @@ def webhook():
     return "!", 200
 
 
+# BOT webhook
 if __name__ == "__main__":
     server.run(host="0.0.0.0", port=int(os.environ.get('PORT', 5000)))
